@@ -32,7 +32,8 @@ let appBereit = false; // angemeldet und Daten geladen
 // ---------------------------------------------
 function ansichtAusHash() {
   const name = location.hash.slice(1);
-  return ANSICHTEN[name] ? name : 'neu';
+  // Nur eigene Einträge – sonst würden z. B. #__proto__ oder #constructor durchrutschen
+  return Object.hasOwn(ANSICHTEN, name) ? name : 'neu';
 }
 
 function rendereAnsicht({ nachOben = false } = {}) {

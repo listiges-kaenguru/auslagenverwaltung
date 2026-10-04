@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| App-Version (`sw.js` → `VERSION`) | **3.0.4** |
+| App-Version (`sw.js` → `VERSION`) | **3.0.5** |
 | Schema-Version (`api/lib/db.php` → `SCHEMA_VERSION`) | **1** |
 | Tests | keine automatisierten Tests |
 
@@ -47,8 +47,11 @@ Der Funktionsumfang ist vollständig umgesetzt (siehe unten). Es gibt keine beka
 
 Neueste zuerst.
 
-### Unveröffentlicht
+### 3.0.5
 
+- Routing: Hash in der URL wird nur noch gegen eigene Ansichten geprüft (`Object.hasOwn`);
+  Links wie `#__proto__` oder `#constructor` führten sonst zu einem Fehler bzw. leerer Ansicht
+  (CodeQL-Hinweis „Unvalidated dynamic method call“)
 - `CONTRIBUTING.md`: Anleitung für Fehlermeldungen, Sicherheitsmeldungen und Pull Requests
 
 ### 3.0.4 – erste öffentliche Version

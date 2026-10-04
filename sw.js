@@ -4,7 +4,7 @@
 // Daten kommen immer live vom Server: Anfragen an api/ werden nie gecacht.
 // Ein Update entsteht durch Erhöhen von VERSION; die App zeigt dann einen „Aktualisieren“-Hinweis.
 // =============================================
-const VERSION = '3.0.4';
+const VERSION = '3.0.5';
 const CACHE   = `vereinsauslagen-mu-${VERSION}`;
 
 const APP_SHELL = [
