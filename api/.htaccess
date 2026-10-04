@@ -1,0 +1,24 @@
+# VereinsAuslagen API
+Options -Indexes
+DirectoryIndex index.php
+
+# Für Hoster mit Apache-Modul-PHP (statt .user.ini)
+<IfModule mod_php.c>
+  php_value post_max_size 24M
+  php_value upload_max_filesize 24M
+  php_value memory_limit 256M
+</IfModule>
+
+# Nur index.php darf aufgerufen werden
+<FilesMatch "^(?!index\.php$).+\.php$">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+</FilesMatch>
+
+# .user.ini und andere versteckte Dateien schützen
+<FilesMatch "^\.">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+</FilesMatch>

@@ -1,0 +1,8 @@
+* text=auto eol=lf
+*.png binary
+*.ico binary
+*.woff2 binary
+
+# Nicht in Release-ZIPs von GitHub (git archive) aufnehmen
+.gitignore export-ignore
+.gitattributes export-ignore

@@ -1,0 +1,11 @@
+# Bei der Ersteinrichtung erzeugt – enthält DB-Zugangsdaten und den TOTP-Schlüssel
+api/config/config.php
+api/config/schluessel.txt
+api/config/*.bak
+
+# Editor / System
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
