@@ -56,3 +56,16 @@ Neueste zuerst.
 
 - [ ] Automatisierte Tests zumindest für die API-Routen
 - [ ] Ende-zu-Ende-Test auf echtem Webhosting (Apache mit `.htaccess`, nginx-Regeln aus der README)
+- [ ] Weitere Benutzerrollen (zusätzlich zu Mitglied/Admin):
+  - **Kassenwart:** sieht eingereichte Auslagen aller Mitglieder als To-do-Liste und kann markieren,
+    dass er die Erstattung veranlasst hat. Auf „erstattet“ setzt weiterhin nur der Einreicher selbst,
+    sobald das Geld angekommen ist (neuer Zwischenstatus bzw. Flag „Erstattung veranlasst“).
+  - **Vorstand:** sieht eingereichte und erledigte Vorgänge aller Mitglieder nur lesend, keine
+    Änderungen an fremden Auslagen.
+  - Achtung: Die Regel „Auslagen-Zugriffe immer mit `benutzer_id = ?`“ muss für diese Rollen gezielt
+    und nur lesend (bzw. beim Kassenwart nur für das Flag) gelockert werden; Admins sehen weiterhin
+    keine fremden Auslagen.
+- [ ] Einfache Kommentarfunktion für Auslagen und Einreichungen, damit Kassenwart oder Vorstand
+  Rückfragen stellen und der Einreicher antworten kann
+- [ ] E-Mail-Versand über SMTP (Zugangsdaten im Admin-Bereich, ohne Fremdbibliothek), z. B. um
+  den Kassenwart auf neue Einreichungen hinzuweisen
