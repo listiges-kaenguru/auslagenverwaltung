@@ -27,7 +27,8 @@ Die App ist installierbar (PWA), braucht aber für die Daten eine Verbindung zum
 Die Idee kam mir, weil ich in meinem Verein den Überblick über die geleisteten Auslagen behalten
 wollte. Die App ist per **Vibecoding** mit [Claude](https://claude.ai) (Anthropic) entstanden:
 Ich habe die Anforderungen beschrieben und die Ergebnisse geprüft, den Code hat im Wesentlichen
-Claude geschrieben. Fehlermeldungen und Verbesserungsvorschläge sind willkommen – gern als Issue.
+Claude geschrieben. Fehlermeldungen und Verbesserungsvorschläge sind willkommen – gern als Issue, siehe
+[`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## Voraussetzungen
 
@@ -149,6 +150,7 @@ Weitergeben an die Vereinsmitglieder.
 ## Entwicklung
 
 - **[`CHANGELOG.md`](CHANGELOG.md)** – aktueller Stand, API-Routen, Änderungsprotokoll, offene Punkte
+- **[`CONTRIBUTING.md`](CONTRIBUTING.md)** – wie du Fehler meldest und Änderungen beiträgst
 - **[`CLAUDE.md`](CLAUDE.md)** – Konventionen und Checkliste für Änderungen (auch für Claude Code)
 - Es gibt keine automatisierten Tests. Zum Ausprobieren genügt ein lokaler Webserver mit PHP und
   MySQL/MariaDB (Passkeys funktionieren nur über HTTPS oder `localhost`).

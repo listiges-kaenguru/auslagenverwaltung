@@ -47,6 +47,10 @@ Der Funktionsumfang ist vollständig umgesetzt (siehe unten). Es gibt keine beka
 
 Neueste zuerst.
 
+### Unveröffentlicht
+
+- `CONTRIBUTING.md`: Anleitung für Fehlermeldungen, Sicherheitsmeldungen und Pull Requests
+
 ### 3.0.4 – erste öffentliche Version
 
 - Mehrbenutzer-Version mit PHP-Backend und MySQL/MariaDB (Funktionsumfang siehe oben)
