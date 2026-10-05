@@ -11,12 +11,15 @@
 declare(strict_types=1);
 
 const STATUS_WERTE = ['offen', 'eingereicht', 'veranlasst', 'erstattet'];
+/** So lange nach „erstattet“ kann das Mitglied noch zurücknehmen; danach ist die Einreichung abgeschlossen */
+const ABSCHLUSS_FRIST_S = 300;
 const BELEG_TYPEN  = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
 
 /** Auslagen samt Einreichung und Namen dessen, der die Erstattung veranlasst hat (Alias a) */
 const AUSLAGEN_SELECT = "SELECT a.*,
         COALESCE(NULLIF(TRIM(CONCAT(v.vorname, ' ', v.nachname)), ''), v.benutzername) AS veranlasst_von_name,
-        e.erstellt_am AS einreichung_am, e.art AS einreichung_art,
+        e.erstellt_am AS einreichung_am, e.art AS einreichung_art, e.erstattet_am AS einreichung_erstattet_am,
+        GREATEST(0, " . ABSCHLUSS_FRIST_S . " - TIMESTAMPDIFF(SECOND, e.erstattet_am, UTC_TIMESTAMP(3))) AS abschluss_in_s,
         EXISTS(SELECT 1 FROM va_einreichung_pdfs p WHERE p.einreichung_id = a.einreichung_id) AS einreichung_hat_pdf
     FROM va_auslagen a
     LEFT JOIN va_benutzer v ON v.id = a.veranlasst_von
@@ -43,6 +46,9 @@ function auslageFuerClient(array $a): array
         'eingereichtAm' => isoZeit($a['einreichung_am']),
         'uebernommen'   => $a['einreichung_art'] === 'uebernahme', // Altbestand ohne echte Einreichung
         'hatPdf'        => (bool)$a['einreichung_hat_pdf'],
+        // Sekunden bis „abgeschlossen“ (0 = schon abgeschlossen; Altbestand ohne Zeitpunkt sofort), sonst null
+        'abschlussInS'  => $a['status'] !== 'erstattet' ? null
+            : ($a['einreichung_erstattet_am'] === null ? 0 : (int)$a['abschluss_in_s']),
         'veranlasstAm'  => isoZeit($a['veranlasst_am']),
         'veranlasstVon' => $a['veranlasst_von_name'] ?? null,
     ];

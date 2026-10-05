@@ -19,6 +19,8 @@ export const hatKassenrolle    = () => ['kassenwart', 'vorstand'].includes(statu
 export const istKassenwart     = () => status.benutzer?.kassenrolle === 'kassenwart';
 export const maxBelegBytes     = () => status.maxBelegBytes;
 export const maxPdfBytes       = () => status.maxPdfBytes;
+/** Backup speichern/einspielen nur, wenn in der Server-Konfiguration eingeschaltet (für Tests) */
+export const datensicherungAktiv = () => status.datensicherung === true;
 
 /** Passkeys brauchen HTTPS (oder localhost) und Browser-Unterstützung */
 export const passkeysMoeglich = () => status.passkeysMoeglich && !!window.PublicKeyCredential;

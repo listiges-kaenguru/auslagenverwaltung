@@ -69,7 +69,7 @@ Unten auf dem Bildschirm findest du vier Bereiche (Kassenwart und Vorstand fünf
 |---|---|
 | **Neu** | Eine neue Auslage mit Beleg erfassen |
 | **Übersicht** | Alle Auslagen mit Summen, nach Status filtern, Details öffnen, einreichen |
-| **Export** | PDF, Excel-Tabelle (CSV) oder ZIP mit Belegen erstellen, Datensicherung |
+| **Export** | PDF, Excel-Tabelle (CSV) oder ZIP mit Belegen erstellen |
 | **Kasse** | Nur für Kassenwart und Vorstand: eingereichte Auslagen aller Mitglieder ([Abschnitt 11](#11-für-kassenwart-und-vorstand)) |
 | **Profil** | Stammdaten, Passwort, Zwei-Faktor-Anmeldung, Passkeys, Abmelden |
 
@@ -82,8 +82,10 @@ Jede Auslage hat einen **Status**:
 | ◕ **Erstattung veranlasst** | Der Kassenwart hat die Überweisung angestoßen. Diesen Status setzt nur der Kassenwart. |
 | ● **Erstattet** | Das Geld ist auf deinem Konto. Diesen Status setzt du selbst. |
 
-Mit dem Knopf oben rechts wechselst du zwischen hellem Design, dunklem Design und der Einstellung
-deines Geräts.
+Oben rechts in der Kopfzeile holt **Aktualisieren** (⟳) in jeder Ansicht den neuesten Stand vom
+Server, etwa neue Kommentare oder Änderungen der Kasse. Auf schmalen Bildschirmen siehst du nur das
+Symbol. Mit dem Knopf daneben wechselst du zwischen hellem Design, dunklem Design und der
+Einstellung deines Geräts.
 
 **Am Computer** springst du mit den Tasten **Alt+1** bis **Alt+4** direkt zu Neu, Übersicht,
 Export und Profil, mit **Alt+5** zur Kasse (nur Kassenwart und Vorstand). **Esc** schließt ein
@@ -122,8 +124,12 @@ Unter **Übersicht** siehst du oben die Gesamtsumme und darunter die Summen je S
 Mit den Knöpfen **Alle / Offen / Eingereicht / Veranlasst / Erstattet** filterst du die Liste.
 
 Die Liste ist zweigeteilt: Oben stehen deine **offenen** Auslagen einzeln, darunter deine
-**Einreichungen**. Jede Einreichung ist ein Kasten mit Datum, Anzahl, Summe, Status und den
-zugehörigen Auslagen.
+**Einreichungen**. Jede Einreichung ist ein Kasten, den du mit einem Tipp auf die Kopfzeile auf- und
+zuklappst (▸ / ▾). Auch eingeklappt zeigt die Kopfzeile Datum, Anzahl, Summe, Status und – falls
+vorhanden – die Zahl der Kommentare bzw. **💬 neu**. Aufgeklappt siehst du die zugehörigen Auslagen,
+die Rückfragen und die Knöpfe. Von selbst aufgeklappt sind nur Einreichungen mit neuen Kommentaren
+(und eine einzelne, noch nicht erstattete Einreichung). Was du auf- oder zugeklappt hast, merkt sich
+die App, bis du dich abmeldest.
 
 Tippe auf eine Auslage, um die **Details** zu öffnen. Bei einer **offenen** Auslage kannst du dort:
 
@@ -144,16 +150,54 @@ Mit **📄 Einreichungs-PDF** öffnest du das beim Einreichen erstellte PDF erne
 
 | Status der Einreichung | Knöpfe |
 |---|---|
-| *Eingereicht* | **↩ Einreichung zurückziehen**: alle Auslagen werden wieder offen, du kannst sie ändern und neu einreichen. **● Als erstattet markieren**: das Geld ist angekommen. |
+| *Eingereicht* | **↩ Einreichung zurückziehen**: alle Auslagen werden wieder offen, du kannst sie ändern und neu einreichen; die Einreichung bleibt unter „Abgebrochen“ erhalten. **● Als erstattet markieren**: das Geld ist angekommen. |
 | *Erstattung veranlasst* | **● Geld erhalten – als erstattet markieren** |
-| *Erstattet* | **↩ Doch noch nicht erstattet**: falls du dich vertippt hast |
+| *Erstattet* | **↩ Doch noch nicht erstattet**: falls du dich vertippt hast – nur in den ersten 5 Minuten |
 
 Nach *Erstattung veranlasst* kannst du die Einreichung nicht mehr zurückziehen. Am Kasten steht,
 wann und von wem die Erstattung veranlasst wurde. Ist etwas falsch, wende dich an den Kassenwart.
 Er kann die Veranlassung zurücknehmen, solange du nicht *Erstattet* gesetzt hast.
 
 Lehnen Kassenwart oder Vorstand eine Einreichung ab, stehen alle ihre Auslagen bei dir wieder auf
-**Offen**. Du kannst sie dann ändern und neu einreichen.
+**Offen**. Du kannst sie dann ändern und neu einreichen. Die Begründung steht im Verlauf der
+Einreichung.
+
+**Abgeschlossen:** 5 Minuten nachdem du eine Einreichung als erstattet markiert hast, wandert sie in
+den eingeklappten Bereich **Abgeschlossen** unter den laufenden Einreichungen. Sie bleibt dort mit
+Status *Erstattet* sichtbar (unter dem Filter *Erstattet* aufgeklappt), lässt sich aber nicht mehr
+zurücknehmen. Kommentieren geht weiterhin. Erstattete Einreichungen aus früheren Versionen stehen
+gleich dort.
+
+**Abgebrochen:** Abgelehnte und zurückgezogene Einreichungen bleiben ganz unten im eingeklappten
+Bereich **Abgebrochen** erhalten, mit Datum, Anzahl, Summe, Einreichungs-PDF und allen
+Kommentaren. Sie lassen sich nur noch ansehen. Das PDF zeigt den Stand, der damals eingereicht war.
+
+### Verlauf und Rückfragen
+
+Zu jeder Einreichung gibt es einen **💬 Verlauf**. Darin schreiben du, der Kassenwart und der
+Vorstand – zum Beispiel „Ist das vom Sommerfest?“ oder „Beleg folgt per Post“. Andere Mitglieder
+und Administratoren sehen ihn nicht.
+
+Außerdem hält der Verlauf **jede Statusänderung** fest, mit Person und Uhrzeit: Eingereicht,
+Erstattung veranlasst, Veranlassung zurückgenommen, Erstattet (und zurück), Zurückgezogen und Nicht
+genehmigt mit Begründung. So ist jederzeit nachvollziehbar, wer wann was geändert hat. Diese
+Einträge lassen sich nicht löschen.
+
+- Klappe **💬 Verlauf** auf, schreibe deinen Text und tippe auf **Senden**. Über die Auswahl
+  daneben kannst du dich auf eine bestimmte Auslage beziehen oder auf die ganze Einreichung. Die
+  Auslage erscheint mit Händler, Betrag und Hinweis („zu: Testladen · 5,12 € · Testmaterial“), damit
+  sie auch bei gleichen Händlern eindeutig ist.
+- Neue Einträge – Kommentare oder Statusänderungen durch andere – erkennst du am roten Punkt an
+  **Übersicht** unten, an **💬 neu** in der Kopfzeile der Einreichung und an **neu** beim Eintrag. Der Verlauf
+  ist zunächst zugeklappt; sobald du ihn aufklappst, gilt er als gelesen.
+- Kommentare lassen sich nicht bearbeiten. Deinen eigenen Kommentar kannst du mit **Löschen**
+  entfernen, solange er jünger als 5 Minuten ist **und** noch niemand darauf geantwortet hat.
+- Bei abgebrochenen Einreichungen kann man nichts mehr schreiben.
+- Im Detail-Fenster einer Auslage stehen die Rückfragen, die sich auf genau diese Auslage beziehen.
+
+Neue Kommentare holt die App, wenn du zu ihr zurückwechselst, oder sofort über **Aktualisieren**
+(⟳) oben rechts in der Kopfzeile. Eine Benachrichtigung per E-Mail gibt
+es noch nicht.
 
 Auslagen aus der Zeit vor den Einreichungen (frühere Versionen) sind je Status zu einem Kasten
 **Übernommen aus früherem Stand** zusammengefasst.
@@ -214,12 +258,16 @@ Ein **Export ändert keinen Status.** Nur **Einreichen** setzt Auslagen auf „E
 
 ## 8. Datensicherung und Umstieg von der alten App
 
-Die Daten deines Vereins werden auf dem Server gesichert. Zusätzlich kannst du eine eigene Kopie
-speichern: **Export → Datensicherung & Import → 💾 Backup speichern**. Das Backup ist eine
-ZIP-Datei mit allen deinen Auslagen und Belegen. Hast du noch nie ein Backup gespeichert oder ist
-das letzte älter als 30 Tage, erinnert dich die App daran.
+Alle Daten liegen in der Datenbank deines Vereins und werden dort gesichert. Ein eigenes Backup
+brauchst du nicht – die Funktion dafür ist in der App normalerweise **ausgeblendet**. Für eine
+eigene Kopie nutze den Export (z. B. **🗜 Komplettpaket** mit allen Belegen).
 
-**Umstieg von der Einzelplatz-App** (der früheren Version ohne Anmeldung):
+Nur wenn der Betreiber sie vorübergehend einschaltet (etwa für den Umstieg von der alten App),
+erscheint unter **Export** der Bereich **Datensicherung & Import** mit **💾 Backup speichern** und
+**♻️ Backup einspielen**.
+
+**Umstieg von der Einzelplatz-App** (der früheren Version ohne Anmeldung) – dafür muss der
+Betreiber die Datensicherung einschalten:
 
 1. In der alten App: **Export → Datensicherung → Backup speichern**.
 2. In dieser App: **Export → ♻️ Backup einspielen** und die ZIP-Datei auswählen.
@@ -320,9 +368,14 @@ Firefox. Dort speicherst du es über das Download-Symbol ⬇.
 
 **Kann der Administrator meine Auslagen sehen?**
 Nein. Administratoren verwalten nur die Konten. Deine offenen Auslagen sieht niemand außer dir.
-Sobald du einreichst, sehen **Kassenwart** und **Vorstand** sie. Ändern können sie deine Auslagen
-nicht: Der Kassenwart setzt nur „Erstattung veranlasst“, und beide können eine Einreichung
-ablehnen. Dann bekommst du sie als offene Auslagen zurück.
+Sobald du einreichst, sehen **Kassenwart** und **Vorstand** sie und können Rückfragen stellen.
+Ändern können sie deine Auslagen nicht: Der Kassenwart setzt nur „Erstattung veranlasst“, und
+beide können eine Einreichung mit Begründung ablehnen. Dann bekommst du sie als offene Auslagen
+zurück.
+
+**Wie erfahre ich von Rückfragen?**
+Am roten Punkt an **Übersicht** und an **💬 neu** bei der Einreichung. Eine E-Mail gibt es noch
+nicht – schau also ab und zu in die App, solange eine Einreichung offen ist.
 
 **Ich habe versehentlich eingereicht.**
 Tippe in der Übersicht am Kasten der Einreichung auf **↩ Einreichung zurückziehen**. Das geht,
@@ -341,20 +394,32 @@ zusätzlich den Bereich **Kasse**. Dort stehen die eingereichten Auslagen **alle
 gebündelt nach Einreichung, mit Name, Datum der Einreichung und Summe. Offene Auslagen der
 Mitglieder siehst du nicht.
 
-- Mit **Zu erledigen / Veranlasst / Erstattet / Alle** filterst du die Liste. Die Zahlen nennen
-  die Anzahl der Einreichungen. *Zu erledigen* sind alle Einreichungen mit Status *Eingereicht*.
+- Mit **Zu erledigen / Veranlasst / Erstattet / 💬 Ungelesen / Alle** filterst du die Liste. Die
+  Zahlen nennen die Anzahl der Einreichungen. *Zu erledigen* sind alle Einreichungen mit Status
+  *Eingereicht*. *💬 Ungelesen* sind die, in deren Verlauf etwas Neues steht – neue Kommentare,
+  Statusänderungen anderer und auch frisch eingegangene Einreichungen. Was du dort beim Wählen des
+  Filters siehst, bleibt sichtbar, bis du den Filter wechselst oder oben auf **Aktualisieren** tippst.
+- Jede Einreichung ist ein Kasten zum Auf- und Zuklappen. Unter *Zu erledigen* sind alle
+  aufgeklappt, sonst nur die mit neuen Kommentaren. Abgelehnte und zurückgezogene Einreichungen
+  stehen unter *Alle* ganz unten im Bereich **Abgebrochen**.
+- **💬 Verlauf:** Bei jeder Einreichung kannst du Fragen stellen, das Mitglied antwortet dort; außerdem
+  stehen darin alle Statusänderungen (Bedienung wie in [Abschnitt 5](#verlauf-und-rückfragen)).
+  Neue Einträge – auch neue Einreichungen – zeigt ein roter
+  Punkt an **Kasse**.
 - **📄 Einreichungs-PDF** öffnet das PDF, das das Mitglied beim Einreichen erstellt hat, mit
   Übersicht, Erstattungsangaben und allen Belegen.
 - **📎 Beleg ansehen** öffnet den Beleg einer Auslage zum Ansehen oder Herunterladen.
-- **🔄 Aktualisieren** holt den neuesten Stand vom Server.
+- **Aktualisieren** (⟳) oben rechts in der Kopfzeile holt den neuesten Stand vom Server.
 
 Alle Aktionen gelten für die **ganze Einreichung**, nie für einzelne Auslagen.
 
 **Kassenwart und Vorstand:**
 
-- **✖ Nicht genehmigen** gibt eine Einreichung an das Mitglied zurück. Alle ihre Auslagen stehen
-  dort wieder auf *Offen*; das Mitglied kann sie ändern und neu einreichen. Das geht nur, solange
-  die Einreichung auf *Eingereicht* steht. Sag dem Mitglied am besten Bescheid, warum.
+- **✖ Nicht genehmigen** gibt eine Einreichung an das Mitglied zurück. Es öffnet sich ein Feld für
+  die **Begründung**, die Pflicht ist und im Verlauf der Einreichung erscheint. Mit **✖ Nicht
+  genehmigen** darunter bestätigst du. Alle Auslagen stehen beim Mitglied dann wieder auf *Offen*;
+  es kann sie ändern und neu einreichen. Das geht nur, solange die Einreichung auf *Eingereicht*
+  steht.
 
 **Nur Kassenwart:**
 
@@ -365,7 +430,7 @@ Alle Aktionen gelten für die **ganze Einreichung**, nie für einzelne Auslagen.
 - Mit **↩ Veranlassung zurücknehmen** machst du ein versehentliches Veranlassen rückgängig. Das
   geht nur, solange das Mitglied den Eingang noch nicht als *Erstattet* bestätigt hat.
 
-Sonst kann der **Vorstand** alles ansehen, aber nichts ändern.
+Sonst kann der **Vorstand** alles ansehen und kommentieren, aber nichts ändern.
 
 Deine eigenen Auslagen verwaltest du wie jedes andere Mitglied unter **Übersicht**.
 
@@ -401,7 +466,8 @@ In der Liste siehst du zu jedem Konto die Rolle, den Status (z. B. *Gesperrt*, *
 Dein eigenes Konto kannst du hier nicht ändern, außer der Kassenrolle. Der **letzte aktive Administrator** kann nicht
 gesperrt, herabgestuft oder gelöscht werden. So kann sich niemand versehentlich aussperren.
 
-Wer ein Konto verlässt, sollte vorher unter **Export** ein Backup seiner Auslagen speichern.
+Wer ein Konto verlässt, kann seine Auslagen vorher unter **Export** als Komplettpaket (ZIP mit
+Belegen) speichern.
 Administratoren haben keinen Zugriff auf fremde Auslagen, außer sie haben selbst eine Kassenrolle.
 
 ### Datenbank-Verbindung

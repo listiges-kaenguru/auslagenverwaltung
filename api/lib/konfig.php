@@ -41,6 +41,15 @@ function speichereKonfig(array $konfig): void
     if (function_exists('opcache_invalidate')) @opcache_invalidate(KONFIG_DATEI, true);
 }
 
+/**
+ * Datensicherung (Backup speichern/einspielen) im Export – standardmäßig AUS, weil alle Daten in der
+ * Datenbank liegen. Nur für Tests: in api/config/config.php 'datensicherung' => true ergänzen.
+ */
+function datensicherungAktiv(): bool
+{
+    return (ladeKonfig()['datensicherung'] ?? false) === true;
+}
+
 /** Geheimer Schlüssel (32 Byte) zum Verschlüsseln der TOTP-Geheimnisse */
 function geheimSchluessel(): string
 {

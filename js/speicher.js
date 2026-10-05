@@ -3,11 +3,15 @@
 // Die Auslagen des angemeldeten Benutzers werden nach der Anmeldung geladen und im Speicher
 // gehalten, damit die Ansichten synchron rendern können. Jede Änderung geht sofort an den
 // Server; erst nach dessen Bestätigung wird der lokale Stand aktualisiert.
-// Belege werden bei Bedarf geladen und kurz zwischengespeichert.
+// Belege werden bei Bedarf geladen und kurz zwischengespeichert. Dazu kommen die Eckdaten der
+// eigenen Einreichungen (Kommentarzähler, abgebrochene Einreichungen).
+// „abschlussUm“ (Client-Uhrzeit in ms) sagt, ab wann eine erstattete Einreichung abgeschlossen ist.
 // =============================================
 import { api, apiGet, apiPost, apiPut, apiDelete, mitId, ApiFehler } from './api.js';
 
 let cache = [];
+let einreichungen = []; // Eckdaten aus GET einreichungen
+const ABSCHLUSS_FRIST_MS = 5 * 60 * 1000; // wie ABSCHLUSS_FRIST_S im Server
 const belegCache = new Map(); // id → Blob (nur für diese Sitzung)
 const MAX_BELEG_CACHE = 30;
 
@@ -27,20 +31,45 @@ export function findeAuslage(id) {
   return cache.find((a) => a.id === id) || null;
 }
 
+/** Eckdaten der eigenen Einreichungen (aktive und abgebrochene) */
+export function ladeEinreichungen() {
+  return einreichungen;
+}
+
 /** Stand vom Server holen (nach Anmeldung und beim Zurückkehren in die App) */
 export async function aktualisiereVomServer() {
-  const { auslagen } = await apiGet('auslagen');
-  cache = auslagen;
+  const [a, e] = await Promise.all([apiGet('auslagen'), apiGet('einreichungen')]);
+  cache = a.auslagen.map(mitAbschluss);
+  einreichungen = e.einreichungen;
   return cache;
 }
+
+/** Restsekunden vom Server in einen Zeitpunkt der eigenen Uhr umrechnen (unabhängig von Uhrabweichungen) */
+function mitAbschluss(a) {
+  return { ...a, abschlussUm: a.abschlussInS == null ? null : Date.now() + a.abschlussInS * 1000 };
+}
+
+/** Nur die Eckdaten der Einreichungen neu holen (z. B. nach neuen Kommentaren) */
+export async function aktualisiereEinreichungen() {
+  einreichungen = (await apiGet('einreichungen')).einreichungen;
+}
+
+// Gelesen-Meldung → Zähler sofort anpassen, ohne Server-Rundreise
+document.addEventListener('kommentare-geaendert', (e) => {
+  const { einreichungId, gelesen } = e.detail || {};
+  if (gelesen) einreichungen = einreichungen.map((x) => (x.id === einreichungId ? { ...x, ungelesen: 0 } : x));
+  else aktualisiereEinreichungen().then(() => document.dispatchEvent(new CustomEvent('ansicht-rendern'))).catch(() => {});
+});
 
 /** Beim Abmelden alles vergessen */
 export function leereSpeicher() {
   cache = [];
+  einreichungen = [];
   belegCache.clear();
 }
 
 function ersetzeImCache(auslage) {
+  auslage = mitAbschluss(auslage);
   const idx = cache.findIndex((a) => a.id === auslage.id);
   cache = idx === -1 ? [auslage, ...cache] : cache.map((a) => (a.id === auslage.id ? auslage : a));
   return auslage;
@@ -68,13 +97,15 @@ export async function aktualisiereAuslage(id, aenderungen) {
 export async function setzeEinreichungStatus(einreichungId, status) {
   await apiPost('einreichungen/status', { id: einreichungId, status });
   const jetzt = new Date().toISOString();
-  cache = cache.map((a) => (a.einreichungId === einreichungId ? { ...a, status, geaendertAm: jetzt } : a));
+  const abschlussUm = status === 'erstattet' ? Date.now() + ABSCHLUSS_FRIST_MS : null;
+  cache = cache.map((a) => (a.einreichungId === einreichungId ? { ...a, status, abschlussUm, geaendertAm: jetzt } : a));
 }
 
 /** Offene Auslagen als Einreichung bündeln (→ „eingereicht“); liefert die Einreichungs-ID */
 export async function reicheEin(ids) {
   const { einreichung, auslagen } = await apiPost('einreichungen', { ids });
   for (const a of auslagen) ersetzeImCache(a);
+  einreichungen = [{ id: einreichung.id, zustand: 'aktiv', kommentare: 0, ungelesen: 0 }, ...einreichungen];
   return einreichung.id;
 }
 
@@ -89,13 +120,25 @@ export function holeEinreichungsPdf(einreichungId) {
   return api(mitId('einreichungen/pdf', einreichungId), { blob: true });
 }
 
-/** Einreichung zurückziehen – die Auslagen sind danach wieder offen */
-export async function zieheEinreichungZurueck(einreichungId) {
-  await apiDelete(mitId('einreichungen', einreichungId));
+function loeseImCache(einreichungId) {
   const jetzt = new Date().toISOString();
   cache = cache.map((a) => (a.einreichungId === einreichungId
     ? { ...a, status: 'offen', einreichungId: null, eingereichtAm: null, uebernommen: false, hatPdf: false, geaendertAm: jetzt }
     : a));
+}
+
+/** Direkt nach dem Einreichen verwerfen (PDF nicht gespeichert, Dialog abgebrochen) – spurlos */
+export async function verwerfeEinreichung(einreichungId) {
+  await apiDelete(mitId('einreichungen', einreichungId));
+  loeseImCache(einreichungId);
+  einreichungen = einreichungen.filter((x) => x.id !== einreichungId);
+}
+
+/** Einreichung zurückziehen – Auslagen wieder offen, die Einreichung bleibt als abgebrochen erhalten */
+export async function zieheEinreichungZurueck(einreichungId) {
+  await apiPost('einreichungen/zurueckziehen', { id: einreichungId });
+  loeseImCache(einreichungId);
+  await aktualisiereEinreichungen().catch(() => {});
 }
 
 /** Auslage samt Beleg löschen */

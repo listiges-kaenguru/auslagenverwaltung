@@ -3,23 +3,27 @@
 // EINREICHUNGEN – feste Gruppen von Auslagen (eigene Daten des Mitglieds)
 // - Einreichen bündelt offene Auslagen zu einer Gruppe (Status „eingereicht“)
 // - Ab dann wechselt der Status nur noch für die ganze Gruppe:
-//   Mitglied: zurückziehen (→ offen, Gruppe aufgelöst), „erstattet“ setzen und wieder zurücknehmen
+//   Mitglied: zurückziehen, „erstattet“ setzen und wieder zurücknehmen
 //   Kassenwart/Vorstand: siehe kasse.php (veranlassen, ablehnen)
-// - Alle Auslagen einer Gruppe haben stets denselben Status.
+// - Alle Auslagen einer aktiven Gruppe haben stets denselben Status.
+// - Zurückziehen und Ablehnen schließen die Einreichung ab (zustand abgelehnt/zurueckgezogen): die
+//   Auslagen werden wieder offen und frei, der Datensatz bleibt mit PDF, Kommentaren und Eckdaten
+//   (Anzahl, Summe) erhalten. Ganz gelöscht („verworfen“) wird nur eine Einreichung, deren PDF beim
+//   Einreichen nicht gespeichert bzw. deren Download-Dialog abgebrochen wurde.
 // - Das beim Einreichen erzeugte PDF wird einmalig zur Einreichung gespeichert (va_einreichung_pdfs)
 //   und ist danach für Mitglied, Kassenwart und Vorstand abrufbar.
 // =============================================
 declare(strict_types=1);
 
-/** Eigene Einreichung mit Status ihrer Auslagen; $benutzerId = null → beliebiger Besitzer (Kasse) */
+/** Aktive Einreichung mit Status ihrer Auslagen; $benutzerId = null → beliebiger Besitzer (Kasse) */
 function ladeEinreichung(string $id, ?int $benutzerId): array
 {
-    $e = abfrage('SELECT e.*, COUNT(a.id) AS anzahl, MIN(a.status) AS status, COUNT(DISTINCT a.status) AS status_anzahl,
+    $e = abfrage("SELECT e.*, COUNT(a.id) AS posten, MIN(a.status) AS status, COUNT(DISTINCT a.status) AS status_anzahl,
             MAX(a.veranlasst_am) AS veranlasst_am
         FROM va_einreichungen e LEFT JOIN va_auslagen a ON a.einreichung_id = e.id
-        WHERE e.id = ?' . ($benutzerId === null ? '' : ' AND e.benutzer_id = ?') . ' GROUP BY e.id',
+        WHERE e.id = ? AND e.zustand = 'aktiv'" . ($benutzerId === null ? '' : ' AND e.benutzer_id = ?') . ' GROUP BY e.id',
         $benutzerId === null ? [$id] : [$id, $benutzerId])->fetch();
-    if (!$e || !(int)$e['anzahl']) throw new ApiFehler('Einreichung nicht gefunden. Bitte neu laden.', 404);
+    if (!$e || !(int)$e['posten']) throw new ApiFehler('Einreichung nicht gefunden. Bitte neu laden.', 404);
     if ((int)$e['status_anzahl'] !== 1) throw new ApiFehler('Die Einreichung hat uneinheitliche Status. Bitte neu laden.', 409);
     return $e;
 }
@@ -32,20 +36,73 @@ function pruefeEinreichungsStatus(array $e, array $erlaubt): void
     }
 }
 
-/** Gruppe auflösen: alle Auslagen wieder offen, Einreichung löschen */
-function loeseEinreichungAuf(string $id): void
+/**
+ * Einreichung (beliebiger Zustand) für Lesen/Kommentieren: Besitzer oder Kassenrolle, sonst 404.
+ * Einreichungen enthalten nie offene Auslagen → für Kassenwart und Vorstand immer sichtbar.
+ */
+function ladeEinreichungMitZugriff(string $id, array $benutzer): array
+{
+    $e = abfrage('SELECT * FROM va_einreichungen WHERE id = ?', [$id])->fetch();
+    $kasse = in_array($benutzer['kassenrolle'], ['kassenwart', 'vorstand'], true);
+    if (!$e || ((int)$e['benutzer_id'] !== (int)$benutzer['id'] && !$kasse)) {
+        throw new ApiFehler('Einreichung nicht gefunden. Bitte neu laden.', 404);
+    }
+    return $e;
+}
+
+/**
+ * Einreichung abschließen (abgelehnt/zurückgezogen): Auslagen wieder offen und frei, Datensatz mit
+ * Eckdaten, PDF und Kommentaren bleibt. $kommentar = Begründung bzw. Vermerk für den Verlauf.
+ */
+function schliesseEinreichung(array $e, string $zustand, array $autor, string $kommentar): void
 {
     $pdo = db();
     $pdo->beginTransaction();
     try {
+        abfrage("UPDATE va_einreichungen e SET zustand = ?, beendet_am = UTC_TIMESTAMP(3),
+                anzahl = (SELECT COUNT(*) FROM va_auslagen a WHERE a.einreichung_id = e.id),
+                summe = (SELECT COALESCE(SUM(a.betrag), 0) FROM va_auslagen a WHERE a.einreichung_id = e.id)
+            WHERE e.id = ? AND e.zustand = 'aktiv'", [$zustand, $e['id']]);
+        fuegeKommentarEin($e, $autor, $kommentar, $zustand === 'abgelehnt' ? 'ablehnung' : 'zurueckgezogen');
         abfrage("UPDATE va_auslagen SET status = 'offen', einreichung_id = NULL, veranlasst_am = NULL, veranlasst_von = NULL,
-            geaendert_am = UTC_TIMESTAMP(3) WHERE einreichung_id = ?", [$id]);
-        abfrage('DELETE FROM va_einreichungen WHERE id = ?', [$id]);
+            geaendert_am = UTC_TIMESTAMP(3) WHERE einreichung_id = ?", [$e['id']]);
         $pdo->commit();
     } catch (Throwable $ex) {
         $pdo->rollBack();
         throw $ex;
     }
+}
+
+/**
+ * Einreichungen samt Eckdaten für Listen: Anzahl Kommentare und ungelesene Einträge (für $leser).
+ * $benutzerId = null → alle (Kasse).
+ */
+function einreichungsListe(?int $benutzerId, int $leserId): array
+{
+    $zeilen = abfrage("SELECT e.*,
+            COALESCE(NULLIF(TRIM(CONCAT(m.vorname, ' ', m.nachname)), ''), m.benutzername) AS mitglied_name,
+            EXISTS(SELECT 1 FROM va_einreichung_pdfs p WHERE p.einreichung_id = e.id) AS hat_pdf,
+            (SELECT COUNT(*) FROM va_kommentare k WHERE k.einreichung_id = e.id AND k.art = 'kommentar') AS kommentare,
+            (SELECT COUNT(*) FROM va_kommentare k WHERE k.einreichung_id = e.id
+                AND (k.benutzer_id IS NULL OR k.benutzer_id <> ?)
+                AND k.id > COALESCE((SELECT g.bis_id FROM va_kommentar_gelesen g
+                    WHERE g.benutzer_id = ? AND g.einreichung_id = e.id), 0)) AS ungelesen
+        FROM va_einreichungen e JOIN va_benutzer m ON m.id = e.benutzer_id"
+        . ($benutzerId === null ? '' : ' WHERE e.benutzer_id = ?') . ' ORDER BY e.erstellt_am DESC',
+        $benutzerId === null ? [$leserId, $leserId] : [$leserId, $leserId, $benutzerId])->fetchAll();
+    return array_map(fn($e) => [
+        'id'          => $e['id'],
+        'mitglied'    => ['id' => (int)$e['benutzer_id'], 'name' => $e['mitglied_name']],
+        'uebernommen' => $e['art'] === 'uebernahme',
+        'zustand'     => $e['zustand'],
+        'erstelltAm'  => isoZeit($e['erstellt_am']),
+        'beendetAm'   => isoZeit($e['beendet_am']),
+        'anzahl'      => $e['anzahl'] === null ? null : (int)$e['anzahl'],   // nur bei abgeschlossenen
+        'summe'       => $e['summe'] === null ? null : round((float)$e['summe'], 2),
+        'hatPdf'      => (bool)$e['hat_pdf'],
+        'kommentare'  => (int)$e['kommentare'],
+        'ungelesen'   => (int)$e['ungelesen'],
+    ], $zeilen);
 }
 
 function setzeEinreichungsStatus(string $id, string $status): void
@@ -68,6 +125,9 @@ route('POST', 'einreichungen', function (): void {
         $platzhalter = implode(', ', array_fill(0, count($ids), '?'));
         abfrage("UPDATE va_auslagen SET status = 'eingereicht', einreichung_id = ?, geaendert_am = UTC_TIMESTAMP(3)
             WHERE benutzer_id = ? AND id IN ({$platzhalter})", [$einreichungId, $b['id'], ...$ids]);
+        $summe = array_sum(array_column(ladeEigeneAuslagen($ids, (int)$b['id']), 'betrag'));
+        protokolliereStatus(['id' => $einreichungId, 'benutzer_id' => $b['id']], $b, 'Eingereicht: '
+            . count($ids) . (count($ids) === 1 ? ' Auslage, ' : ' Auslagen, ') . number_format($summe, 2, ',', '.') . ' €');
         $pdo->commit();
     } catch (Throwable $ex) {
         $pdo->rollBack();
@@ -79,13 +139,47 @@ route('POST', 'einreichungen', function (): void {
     ]);
 });
 
-/** Zurückziehen (versehentlich eingereicht, PDF-Dialog abgebrochen) – nur solange „eingereicht“ */
+route('GET', 'einreichungen', function (): void {
+    $b = erfordereLogin();
+    antworte(['einreichungen' => einreichungsListe((int)$b['id'], (int)$b['id'])]);
+});
+
+/**
+ * Verwerfen: technischer Rückbau direkt nach dem Einreichen (PDF nicht gespeichert, Download-Dialog
+ * abgebrochen). Nur ohne Kommentare und nur kurz nach dem Anlegen – sonst gilt „zurückziehen“.
+ */
 route('DELETE', 'einreichungen', function (): void {
     $b = erfordereLogin();
     $e = ladeEinreichung((string)($_GET['id'] ?? ''), (int)$b['id']);
+    pruefeEinreichungsStatus($e, ['eingereicht']);
+    $frisch = (bool)abfrage('SELECT erstellt_am > UTC_TIMESTAMP(3) - INTERVAL 30 MINUTE FROM va_einreichungen WHERE id = ?',
+        [$e['id']])->fetchColumn();
+    $kommentiert = (bool)abfrage("SELECT 1 FROM va_kommentare WHERE einreichung_id = ? AND art = 'kommentar' LIMIT 1",
+        [$e['id']])->fetchColumn();
+    if ($e['veranlasst_am'] !== null || !$frisch || $kommentiert) {
+        throw new ApiFehler('Diese Einreichung lässt sich nur noch zurückziehen.', 409);
+    }
+    $pdo = db();
+    $pdo->beginTransaction();
+    try {
+        abfrage("UPDATE va_auslagen SET status = 'offen', einreichung_id = NULL, geaendert_am = UTC_TIMESTAMP(3)
+            WHERE einreichung_id = ?", [$e['id']]);
+        abfrage('DELETE FROM va_einreichungen WHERE id = ?', [$e['id']]); // PDF per CASCADE
+        $pdo->commit();
+    } catch (Throwable $ex) {
+        $pdo->rollBack();
+        throw $ex;
+    }
+    antworte();
+});
+
+/** Zurückziehen durch das Mitglied – nur solange „eingereicht“; die Einreichung bleibt als abgeschlossen erhalten */
+route('POST', 'einreichungen/zurueckziehen', function (): void {
+    $b = erfordereLogin();
+    $e = ladeEinreichung((string)(eingabe()['id'] ?? ''), (int)$b['id']);
     if ($e['veranlasst_am'] !== null) throw new ApiFehler('Für diese Einreichung wurde bereits eine Erstattung veranlasst.', 409);
     pruefeEinreichungsStatus($e, ['eingereicht']);
-    loeseEinreichungAuf($e['id']);
+    schliesseEinreichung($e, 'zurueckgezogen', $b, 'Einreichung zurückgezogen.');
     antworte();
 });
 
@@ -93,6 +187,8 @@ route('DELETE', 'einreichungen', function (): void {
  * Mitglied ändert den Status der ganzen Gruppe:
  * „erstattet“ (aus eingereicht oder veranlasst) bzw. zurück auf den vorigen Stand
  * („veranlasst“, wenn der Kassenwart veranlasst hatte, sonst „eingereicht“).
+ * Zurück geht nur innerhalb von ABSCHLUSS_FRIST_S nach „erstattet“ – danach ist die Einreichung
+ * abgeschlossen (Altbestand ohne erstattet_am gilt sofort als abgeschlossen).
  */
 route('POST', 'einreichungen/status', function (): void {
     $b = erfordereLogin();
@@ -100,6 +196,11 @@ route('POST', 'einreichungen/status', function (): void {
     $e = ladeEinreichung((string)($eingabe['id'] ?? ''), (int)$b['id']);
     $status = (string)($eingabe['status'] ?? '');
     $veranlasst = $e['veranlasst_am'] !== null;
+    if ($status !== 'erstattet' && $e['status'] === 'erstattet') {
+        $offen = $e['erstattet_am'] !== null && (bool)abfrage('SELECT erstattet_am > UTC_TIMESTAMP(3) - INTERVAL '
+            . ABSCHLUSS_FRIST_S . ' SECOND FROM va_einreichungen WHERE id = ?', [$e['id']])->fetchColumn();
+        if (!$offen) throw new ApiFehler('Die Einreichung ist abgeschlossen – „erstattet“ lässt sich nicht mehr zurücknehmen.', 409);
+    }
     match ($status) {
         'erstattet'   => pruefeEinreichungsStatus($e, ['eingereicht', 'veranlasst']),
         'veranlasst'  => $veranlasst ? pruefeEinreichungsStatus($e, ['erstattet'])
@@ -109,6 +210,13 @@ route('POST', 'einreichungen/status', function (): void {
         default       => throw new ApiFehler('Ungültiger Status.'),
     };
     setzeEinreichungsStatus($e['id'], $status);
+    abfrage('UPDATE va_einreichungen SET erstattet_am = ' . ($status === 'erstattet' ? 'UTC_TIMESTAMP(3)' : 'NULL')
+        . ' WHERE id = ?', [$e['id']]);
+    protokolliereStatus($e, $b, match ($status) {
+        'erstattet'   => 'Status: Erstattet – Geld erhalten',
+        'veranlasst'  => 'Status zurück auf „Erstattung veranlasst“ (doch noch nicht erstattet)',
+        'eingereicht' => 'Status zurück auf „Eingereicht“ (doch noch nicht erstattet)',
+    });
     antworte();
 });
 
@@ -174,7 +282,8 @@ route('PUT', 'einreichungen/pdf', function (): void {
     antworte();
 });
 
+/** Auch für abgeschlossene Einreichungen – das PDF ist der Stand dessen, was eingereicht war */
 route('GET', 'einreichungen/pdf', function (): void {
     $b = erfordereLogin();
-    sendeEinreichungsPdf(ladeEinreichung((string)($_GET['id'] ?? ''), (int)$b['id'])['id']);
+    sendeEinreichungsPdf(ladeEinreichungMitZugriff((string)($_GET['id'] ?? ''), $b)['id']);
 });

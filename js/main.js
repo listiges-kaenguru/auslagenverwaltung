@@ -3,7 +3,9 @@
 // Ablauf: Serverstatus laden → Einrichtung/Anmeldung → Daten laden → App
 // Routing (Hash), Event-Delegation, Tastenkürzel
 // =============================================
-import { aktionFuer, registriereAktionen, zeigeToast, navigiere, escapeHtml } from './hilfen.js';
+import {
+  aktionFuer, registriereAktionen, zeigeToast, navigiere, escapeHtml, mitLadezustand, meldeDatenAenderung
+} from './hilfen.js';
 import { aktualisiereVomServer, leereSpeicher } from './speicher.js';
 import { ladeStatus, aktuellerBenutzer, anzeigeName, hatKassenrolle } from './sitzung.js';
 import { anmeldeSchritt, rendereAnmeldeSchritt } from './ansicht-anmeldung.js';
@@ -11,7 +13,10 @@ import { rendereNeu } from './ansicht-neu.js';
 import { rendereUebersicht } from './ansicht-uebersicht.js';
 import { rendereExport } from './ansicht-export.js';
 import { rendereProfil, vergissProfilZustand } from './ansicht-profil.js';
-import { rendereKasse, vergissKassenDaten } from './ansicht-kasse.js';
+import { rendereKasse, vergissKassenDaten, aktualisiereKasse } from './ansicht-kasse.js';
+import { vergissKommentare, veraltenVerlaeufe } from './kommentare.js';
+import { vergissKlappZustand } from './klappen.js';
+import { apiGet } from './api.js';
 import { initDetail, istDetailOffen, schliesseDetail } from './detail.js';
 import { initPWA } from './pwa.js';
 import './einreichen.js';
@@ -87,14 +92,21 @@ async function weiterNachStatus() {
     appBereit = !anmeldeSchritt(); // Sitzung kann währenddessen abgelaufen sein
   }
   aktualisiereKopf();
+  aktualisiereHinweise();
   rendereAnsicht({ nachOben: true });
 }
 
 document.addEventListener('angemeldet', weiterNachStatus);
 document.addEventListener('anmelde-schritt', weiterNachStatus);
-document.addEventListener('abgemeldet', () => {
+function vergissSitzungsDaten() {
   vergissProfilZustand();
   vergissKassenDaten();
+  vergissKommentare();
+  vergissKlappZustand();
+}
+
+document.addEventListener('abgemeldet', () => {
+  vergissSitzungsDaten();
   weiterNachStatus();
 });
 
@@ -104,8 +116,7 @@ document.addEventListener('nicht-angemeldet', async () => {
   appBereit = false;
   zeigeToast('Sitzung beendet – bitte erneut anmelden', 5000);
   await ladeStatus().catch(() => {});
-  vergissProfilZustand();
-  vergissKassenDaten();
+  vergissSitzungsDaten();
   weiterNachStatus();
 });
 
@@ -119,15 +130,37 @@ document.addEventListener('visibilitychange', async () => {
   if (document.visibilityState !== 'visible' || !appBereit) return;
   try {
     await aktualisiereVomServer();
+    veraltenVerlaeufe();
     document.dispatchEvent(new CustomEvent('daten-geaendert'));
+    aktualisiereHinweise();
   } catch { /* offline o. Ä. – beim nächsten Mal */ }
 });
+
+// ---------------------------------------------
+// Hinweis-Punkte an der Navigation: ungelesene Kommentare (eigene Einreichungen bzw. Kasse)
+// ---------------------------------------------
+async function aktualisiereHinweise() {
+  const setze = (el, anzahl) => {
+    if (!el) return;
+    el.classList.toggle('nav-btn--hinweis', anzahl > 0);
+    if (anzahl > 0) el.title = `${anzahl} ungelesene Kommentare`;
+    else el.removeAttribute('title');
+  };
+  if (!appBereit) return;
+  try {
+    const { eigene, kasse } = await apiGet('kommentare/ungelesen');
+    setze(document.querySelector('.nav-btn[data-view="uebersicht"]'), eigene);
+    setze(document.getElementById('navKasse'), kasse);
+  } catch { /* nicht kritisch */ }
+}
+document.addEventListener('hinweise-aktualisieren', aktualisiereHinweise);
 
 function aktualisiereKopf() {
   const untertitel = document.getElementById('kopfzeileUntertitel');
   const b = aktuellerBenutzer();
   untertitel.textContent = b && appBereit ? `Angemeldet als ${anzeigeName(b)}` : 'Ausgabenverwaltung';
   document.getElementById('navKasse').hidden = !(appBereit && hatKassenrolle());
+  document.getElementById('aktualisierenKnopf').hidden = !appBereit;
 }
 
 // ---------------------------------------------
@@ -164,7 +197,21 @@ registriereAktionen({
     design.setzeWahl(neu);
     zeigeToast(`Farbschema: ${DESIGN_NAMEN[neu]}`);
   },
-  'erneut-laden': () => starte()
+  'erneut-laden': () => starte(),
+
+  /** Kopfzeile: eigene Daten, Kasse und Verläufe frisch vom Server – in jeder Ansicht */
+  aktualisieren: (btn) => mitLadezustand(btn, async () => {
+    try {
+      await aktualisiereVomServer();
+      veraltenVerlaeufe();
+      if (hatKassenrolle()) await aktualisiereKasse();
+      zeigeToast('✓ Aktualisiert');
+    } catch (err) {
+      zeigeToast(`⚠ ${err.message}`, 5000);
+    }
+    aktualisiereHinweise();
+    meldeDatenAenderung();
+  })
 });
 
 // ---------------------------------------------

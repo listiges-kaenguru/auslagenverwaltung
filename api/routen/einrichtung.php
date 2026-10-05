@@ -28,6 +28,7 @@ route('GET', 'status', function (): void {
         'benutzer'     => $benutzer ? benutzerFuerClient($benutzer) : null,
         'maxBelegBytes' => maxBelegBytes(),
         'maxPdfBytes'  => maxPdfBytes(),
+        'datensicherung' => $eingerichtet && datensicherungAktiv(),
         'passkeysMoeglich' => istHttps() || hostName() === 'localhost',
     ]);
 });

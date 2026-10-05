@@ -27,7 +27,7 @@ export function rendereNeu(container) {
   const heute = heuteISO();
 
   container.innerHTML = `
-    <div class="ansicht">
+    <div class="ansicht ansicht--schmal">
       <h2 class="seiten-titel">Neue Auslage</h2>
 
       <form class="formular" id="formNeu" novalidate autocomplete="off">

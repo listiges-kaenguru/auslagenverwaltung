@@ -1,6 +1,11 @@
 # Konzept: Kommentarfunktion (geplant für v3.2.0)
 
-Stand: Entwurf zur Abstimmung. Nichts davon ist umgesetzt. Abschnitte mit **❓** brauchen eine
+Stand: abgestimmt und in v3.2.0 umgesetzt (Branch `feature/kommentarfunktion`). Abweichung: Eine
+Einreichung, deren PDF beim Einreichen nicht gespeichert bzw. deren Download-Dialog abgebrochen wurde,
+wird weiterhin spurlos verworfen (sie war nie wirklich abgegeben); das Zurückziehen durch das Mitglied
+bewahrt sie wie beschlossen auf.
+Ergänzung: Der Verlauf protokolliert zusätzlich jede Statusänderung (siehe CHANGELOG v3.2.0) und
+heißt deshalb „💬 Verlauf“. Abschnitte mit **❓** brauchen eine
 Entscheidung; dort steht jeweils eine Empfehlung.
 
 ## 1. Ziel
@@ -55,7 +60,7 @@ erhalten:
 - Abgeschlossene Einreichungen erscheinen in einem eigenen, standardmäßig **eingeklappten**
   Bereich (siehe Abschnitt 5).
 
-Alternative: Beim Zurückziehen (durch das Mitglied selbst) weiter löschen und nur Ablehnungen
+Alternative (wird nicht umgesetzt!): Beim Zurückziehen (durch das Mitglied selbst) weiter löschen und nur Ablehnungen
 aufbewahren. Das ist einfacher, aber dann gibt es zwei unterschiedliche Verhaltensweisen.
 
 ### ❓ Bearbeiten und Löschen von Kommentaren
@@ -64,7 +69,7 @@ aufbewahren. Das ist einfacher, aber dann gibt es zwei unterschiedliche Verhalte
 löschbar** (gegen Tippfehler bzw. Absenden im falschen Verlauf), danach festgeschrieben. Das passt zur
 Nachvollziehbarkeit, die wir bei „Erstattung veranlasst“ eingeführt haben.
 
-Alternative: gar nicht löschbar, oder löschbar bis zur ersten Antwort.
+Alternative (mit Ergänzung umsetzen!): gar nicht löschbar, oder löschbar bis zur ersten Antwort. Ergänzung: Löschbar innerhalb von 5 Minuten ODER wenn Antwort erhalten. Je nachdem, was zuerst eintritt.
 
 ## 3. Ungelesen-Markierung
 
@@ -174,6 +179,8 @@ Bei vielen Einreichungen wird auch die Kasse lang. Möglich wäre eine zweite Eb
 Einreichungen reichen für kleine Vereine, eine zweite Ebene kostet einen Klick mehr. Falls doch,
 nur im Filter **Alle**.
 
+Anmerkung: Ich folge deiner Empfehlung!
+
 ## 6. API (Entwurf)
 
 | Route | Wer | Zweck |
@@ -207,10 +214,114 @@ Ausgabe immer über `escapeHtml()`, Zeilenumbrüche erhalten (`white-space: pre-
 ## 8. Offene Fragen im Überblick
 
 1. Abgelehnte/zurückgezogene Einreichungen mit PDF und Kommentaren aufbewahren (Empfehlung) oder
-   wie bisher löschen?
-2. Begründung beim **Nicht genehmigen** als Pflicht?
-3. Kommentare: nicht bearbeitbar, 5 Minuten löschbar?
+   wie bisher löschen? --> Aufbewahren
+2. Begründung beim **Nicht genehmigen** als Pflicht? --> Ja
+3. Kommentare: nicht bearbeitbar, 5 Minuten löschbar? --> 5 Minuten ode Antwort vorhanden.
 4. Darf der Einreicher **von sich aus** einen Kommentar beginnen (z. B. „Beleg folgt per Post“) oder
-   nur antworten? Empfehlung: ja, darf.
-5. Zweite Gruppierungsebene nach Mitglied in der Kasse – vorerst nicht?
-6. Sollen Kommentare im **Export** (CSV/PDF) auftauchen? Empfehlung: nein, vorerst nicht.
+   nur antworten? Empfehlung: ja, darf. --> Ja
+5. Zweite Gruppierungsebene nach Mitglied in der Kasse – vorerst nicht? --> vorerst nicht!
+6. Sollen Kommentare im **Export** (CSV/PDF) auftauchen? Empfehlung: nein, vorerst nicht. --> vorerst nicht!
+
+## 9. Nachtrag: Wann ist eine Antwort nötig?
+
+### Problem
+
+Der Filter **💬 Antwort nötig** in der Kasse zeigt heute jede Einreichung, deren **letzter Kommentar
+vom Mitglied** stammt. Hat die Kasse die Antwort gelesen und ist zufrieden, gibt es keinen Grund,
+noch etwas zu schreiben. Die Einreichung bleibt dann für immer in diesem Filter, auch wenn sie
+längst veranlasst oder erstattet ist. Dasselbe gilt, wenn ein Mitglied von sich aus einen Hinweis
+schreibt („Beleg folgt per Post“).
+
+Der Kern: Aus der Reihenfolge der Kommentare lässt sich nicht ablesen, ob eine Frage **erledigt**
+ist. Das muss irgendwo festgehalten werden.
+
+### Betrachtete Lösungen
+
+| | Idee | Bewertung |
+|---|---|---|
+| A | Wie heute, aber nur Einreichungen mit Status *Eingereicht* | Behebt nur einen Teil: Nach einer Antwort bleibt die Einreichung trotzdem im Filter, bis sie veranlasst wird. |
+| B | „Antwort nötig“ = **ungelesene** Kommentare vom Mitglied | Einfach, aber Lesen ist nicht Erledigen: Wer die Antwort kurz liest und später reagieren will, verliert sie aus dem Filter. Außerdem ist „gelesen“ je Person – der Vorstand würde sie weiter sehen, der Kassenwart nicht. |
+| C | **Zustand der Rückfrage** je Einreichung, der sich durch Kommentare und Aktionen ändert und von der Kasse ausdrücklich als erledigt markiert werden kann | Bildet den echten Ablauf ab, für beide Seiten sichtbar. Etwas mehr Aufwand. |
+
+**Empfehlung: C.**
+
+### Zustand der Rückfrage
+
+Jede aktive Einreichung hat einen von drei Zuständen:
+
+| Zustand | Bedeutung | Anzeige |
+|---|---|---|
+| *keine* | nichts offen | – |
+| *wartet auf Mitglied* | Kasse hat gefragt, das Mitglied soll antworten | Mitglied: **❓ Rückfrage – bitte antworten** am Kopf der Einreichung, Einreichung standardmäßig aufgeklappt. Kasse: **⏳ wartet auf Mitglied** |
+| *wartet auf Kasse* | Mitglied hat geantwortet oder einen Hinweis geschrieben | Kasse: Filter **💬 Antwort nötig**, Kennzeichen **💬 Antwort nötig** am Kopf. Mitglied: **⏳ wartet auf Kasse** |
+
+Übergänge (der Zustand gilt für die Kasse als Team, nicht je Person):
+
+| Ereignis | neuer Zustand |
+|---|---|
+| Mitglied schreibt einen Kommentar | *wartet auf Kasse* |
+| Kassenwart oder Vorstand schreibt einen Kommentar | *wartet auf Mitglied* – außer der Haken **„Keine Antwort nötig“** ist gesetzt (z. B. „Danke, passt so“), dann *keine* |
+| Kasse tippt **✓ Erledigt** (sichtbar, solange etwas offen ist) | *keine* |
+| Kasse veranlasst die Erstattung oder lehnt ab | *keine* (die Frage ist damit beantwortet) |
+| Mitglied zieht zurück, Einreichung wird abgeschlossen | *keine* |
+| Statusänderung durch das Mitglied (z. B. Erstattet) | unverändert |
+
+**✓ Erledigt** wird wie die Statusänderungen im Verlauf protokolliert („Rückfrage erledigt – Name,
+Zeit“). So bleibt nachvollziehbar, wer eine offene Frage abgeschlossen hat.
+
+Der Filter **💬 Antwort nötig** zeigt nur noch Einreichungen im Zustand *wartet auf Kasse*.
+Optional kommt ein zweiter Filter **⏳ Wartet auf Mitglied** hinzu, damit die Kasse sieht, wo sie
+selbst auf etwas wartet.
+
+### Oberfläche
+
+```
+Kasse, Formular im Verlauf:
+  [ Antwort schreiben …                         ]
+  [Bezug: ganze Einreichung ▾]  ☐ Keine Antwort nötig   [Senden]
+
+Kasse, Kopf einer Einreichung mit offener Antwort:
+  ▾ Maria Muster · Eingereicht am …   37,50 €  ◐ Eingereicht  💬 Antwort nötig
+    …
+    [✓ Erledigt]  [📄 Einreichungs-PDF]  [💸 Erstattung veranlasst]  [✖ Nicht genehmigen]
+
+Mitglied, Kopf einer Einreichung mit offener Rückfrage:
+  ▾ Eingereicht am …  2 Auslagen · 24,00 €   ◐ Eingereicht  ❓ Rückfrage – bitte antworten
+```
+
+### Datenmodell
+
+`va_einreichungen.rueckfrage ENUM('keine','wartet_mitglied','wartet_kasse') NOT NULL DEFAULT 'keine'`.
+Gesetzt wird das Feld ausschließlich serverseitig in den betroffenen Routen (Kommentar schreiben,
+Erledigt, Veranlassen, Ablehnen, Zurückziehen). Schema 5 ist noch nicht veröffentlicht – die Spalte
+kann deshalb in denselben Migrationsschritt.
+
+Neue Route: `POST kommentare/erledigt {einreichungId}` (nur Kassenrolle). `POST kommentare` bekommt
+das optionale Feld `keineAntwortNoetig`. Die Eckdaten-Listen liefern `rueckfrage` statt
+`letzteRolle`.
+
+### Offene Fragen
+
+1. Lösung C (Zustand mit **✓ Erledigt**) übernehmen?
+2. Soll der Haken **„Keine Antwort nötig“** standardmäßig **aus** sein (jeder Kassen-Kommentar
+   erwartet eine Antwort)? Empfehlung: ja, aus.
+3. Zweiter Filter **⏳ Wartet auf Mitglied** in der Kasse? Empfehlung: ja, kostet wenig.
+4. Soll **💸 Erstattung veranlasst** bei *wartet auf Mitglied* nur einen Hinweis zeigen („Rückfrage
+   noch offen – trotzdem veranlassen?“) oder gesperrt sein? Empfehlung: nur Hinweis.
+5. Darf auch das Mitglied eine eigene Frage als erledigt markieren (etwa „Beleg folgt“ hat sich
+   erledigt)? Empfehlung: nein, das schließt die Kasse – das Mitglied kann es ja dazuschreiben.
+
+**Entscheidung (überholt):** Lösung C war kurz umgesetzt (mit Schema 6), wurde aber wieder
+zurückgebaut – zu viele Filter, Kennzeichen und Bedienschritte für kleine Vereine.
+
+**Umgesetzt stattdessen (schlank, nur über den Gelesen-Stand):**
+
+- Ein Filter **💬 Ungelesen** in der Kasse ersetzt „Antwort nötig“ und „Wartet auf Mitglied“: alle
+  aktiven Einreichungen mit ungelesenen Einträgen (Kommentare und Statusänderungen anderer – damit
+  auch neu eingegangene Einreichungen). Gelesen gilt als erledigt; „gelesen“ gilt je Person.
+- Damit Gelesenes beim Arbeiten nicht aus der Liste springt, bleibt sie stabil, bis der Filter
+  gewechselt oder „Aktualisieren“ getippt wird.
+- Verläufe sind standardmäßig **zugeklappt**; gelesen ist ein Verlauf erst, wenn er bewusst
+  aufgeklappt wurde (sonst wäre unter „Zu erledigen“ alles schon beim Anzeigen gelesen).
+- Filterleisten brechen in eine zweite Zeile um, statt seitlich zu scrollen.
+- Kein Rückfrage-Zustand, kein „Erledigt“, kein Haken „Keine Antwort nötig“; Schema bleibt 5.

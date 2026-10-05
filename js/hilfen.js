@@ -89,7 +89,8 @@ export function gruppiereNachEinreichung(auslagen) {
     if (!gruppen.has(a.einreichungId)) {
       gruppen.set(a.einreichungId, {
         id: a.einreichungId, eingereichtAm: a.eingereichtAm, uebernommen: a.uebernommen, hatPdf: a.hatPdf,
-        status: a.status, veranlasstAm: a.veranlasstAm, veranlasstVon: a.veranlasstVon, auslagen: []
+        status: a.status, veranlasstAm: a.veranlasstAm, veranlasstVon: a.veranlasstVon,
+        abschlussUm: a.abschlussUm ?? null, auslagen: []
       });
     }
     gruppen.get(a.einreichungId).auslagen.push(a);
@@ -97,6 +98,11 @@ export function gruppiereNachEinreichung(auslagen) {
   return [...gruppen.values()]
     .map((g) => ({ ...g, auslagen: g.auslagen.sort((x, y) => x.datum.localeCompare(y.datum)) }))
     .sort((x, y) => (y.eingereichtAm || '').localeCompare(x.eingereichtAm || ''));
+}
+
+/** Erstattet und Frist abgelaufen → abgeschlossen (nicht mehr zurücknehmbar) */
+export function istAbgeschlossen(g) {
+  return g.status === 'erstattet' && g.abschlussUm != null && Date.now() >= g.abschlussUm;
 }
 
 /** Kopfzeile einer Einreichung: „Eingereicht am …“ bzw. Altbestand */

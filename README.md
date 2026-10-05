@@ -9,20 +9,22 @@ Läuft auf normalem Shared-Webhosting mit PHP und MySQL – ohne Build-Schritt, 
 
 - Auslagen erfassen (Datum, Händler, Betrag, Notiz, Beleg als Foto oder PDF), Status
   offen → eingereicht → Erstattung veranlasst → erstattet
-- Export als CSV, PDF oder ZIP, Datensicherung als ZIP
+- Export als CSV, PDF oder ZIP (Datensicherung/Backup-Import nur per Schalter, siehe „Sicherheit“)
 - Installierbar als App (PWA), Hell-/Dunkel-Modus
 - Benutzerkonten mit Login/Logout, Passwort ändern, Rollen **Admin** und **Benutzer**
 - **Kassenrollen** zusätzlich zur Rolle: **Kassenwart** sieht eingereichte Auslagen aller Mitglieder
   (mit Belegen und IBAN) und setzt „Erstattung veranlasst“; **Vorstand** sieht sie nur lesend.
   Beide können eine Einreichung ablehnen. Eingereichte Auslagen bilden eine feste Gruppe: Status
   nur gemeinsam, einzeln nicht mehr lösch- oder änderbar
+- **Rückfragen**: Kommentarverlauf je Einreichung zwischen Mitglied, Kassenwart und Vorstand mit
+  Hinweis auf Ungelesenes; Einreichungen und Verläufe sind einklappbar
 - Zwei-Faktor-Anmeldung per **TOTP** (Authenticator-App) inkl. 10 Wiederherstellungscodes
 - Anmeldung per **Passkey** (Fingerabdruck, Face-ID, Geräte-PIN) – ersetzt Passwort + TOTP
 - **Stammdaten im Profil** (Name, IBAN, Ort) → werden ins Einreichungs-PDF übernommen
 - **Auswahl beim Einreichen**: offene Auslagen einzeln an- oder abwählen
 - **Admin-Bereich im Profil**: Benutzer anlegen, sperren, Rolle und Kassenrolle ändern, Passwort bzw.
   2FA/Passkeys zurücksetzen, löschen – und die **Datenbank-Verbindung** ändern
-- Import von Backups der früheren Einzelplatz-Version (Export → „Backup einspielen“)
+- Import von Backups der früheren Einzelplatz-Version (Export → „Backup einspielen“, nur wenn eingeschaltet)
 
 Die App ist installierbar (PWA), braucht aber für die Daten eine Verbindung zum Server.
 
@@ -102,23 +104,38 @@ Nach einem Wechsel müssen sich alle neu anmelden.
 - CSRF-Schutz über eigenen Anfrage-Header und Origin-Prüfung
 - Jeder Benutzer sieht ausschließlich seine eigenen Auslagen; Admins verwalten Konten, sehen aber
   keine fremden Auslagen. Einzige Ausnahme: Kassenwart und Vorstand sehen fremde Auslagen ab Status
-  „eingereicht“ (offene nie). Inhalte ändern können sie nicht: Der Kassenwart setzt nur
-  „Erstattung veranlasst“, Kassenwart und Vorstand können eine Einreichung als Ganzes ablehnen.
-  Die IBAN der Mitglieder sieht nur der Kassenwart
+  „eingereicht“ (offene nie) und können sie kommentieren. Inhalte ändern können sie nicht: Der
+  Kassenwart setzt nur „Erstattung veranlasst“, Kassenwart und Vorstand können eine Einreichung als
+  Ganzes mit Begründung ablehnen. Die IBAN der Mitglieder sieht nur der Kassenwart
+- Kommentare sind nicht bearbeitbar und nur kurz (5 Minuten, ohne Antwort) löschbar; abgelehnte und
+  zurückgezogene Einreichungen bleiben mit PDF und Verlauf erhalten
 - Eingereichte Auslagen sind einzeln nicht mehr änderbar oder löschbar; nach veranlasster Erstattung
   lässt sich auch die Einreichung nicht mehr zurückziehen. Konten mit solchen Auslagen kann der Admin
   nur sperren, nicht löschen
 - Der letzte aktive Admin kann nicht gesperrt, herabgestuft oder gelöscht werden
 
 **Datensicherung**: regelmäßig die Datenbank sichern (z. B. `mysqldump` oder Backup-Funktion des
-Hosters) – sie enthält auch alle Belege und Einreichungs-PDFs. Zusätzlich kann jeder Benutzer unter
-Export → Datensicherung ein ZIP seiner eigenen Daten speichern.
+Hosters) – sie enthält auch alle Belege und Einreichungs-PDFs.
+
+Die Datensicherung in der App (Export → „Backup speichern“ / „Backup einspielen“) ist **standardmäßig
+ausgeschaltet und ausgeblendet**, weil alle Daten in der Datenbank liegen. Zum Testen oder für den
+Umstieg von der Einzelplatz-Version lässt sie sich in `api/config/config.php` einschalten:
+
+```php
+return array (
+  'datensicherung' => true,   // ergänzen; zum Ausschalten wieder entfernen
+  'db' => array ( … ),
+  …
+```
 
 ## Umstieg von der Einzelplatz-Version
 
 Frühere Versionen von VereinsAuslagen liefen ohne Server und speicherten alles im Browser.
 Daten daraus lassen sich übernehmen:
 
+
+Dafür vorübergehend die Datensicherung einschalten (`'datensicherung' => true` in
+`api/config/config.php`, siehe oben) und danach wieder entfernen.
 
 1. In der bisherigen App: Export → Datensicherung → **Backup speichern** (ZIP).
 2. In der Mehrbenutzer-App anmelden: Export → **Backup einspielen** und die ZIP-Datei wählen.
@@ -140,6 +157,8 @@ js/webauthn.js            Passkeys im Browser
 js/speicher.js            Auslagen/Belege über die API (statt localStorage/IndexedDB)
 js/einreichen.js          Auswahldialog + Einreichungs-PDF
 js/ansicht-kasse.js       Kasse: Einreichungen aller Mitglieder (Kassenwart/Vorstand)
+js/kommentare.js          Rückfragen: Verlauf, Formular, Gelesen-Stand
+js/klappen.js             einklappbare Bereiche (<details>), Zustand je Sitzung
 api/index.php             einziger öffentlicher PHP-Einstieg (Router: api/?r=…)
 api/lib/                  HTTP, Konfiguration, DB/Schema, Sitzung, TOTP, WebAuthn
 api/routen/               Einrichtung, Anmeldung, Profil, Auslagen/Einreichungen/Belege, Kasse, Admin

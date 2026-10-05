@@ -4,8 +4,8 @@
 
 | | |
 |---|---|
-| App-Version (`sw.js` → `VERSION`) | **v3.1.1** |
-| Schema-Version (`api/lib/db.php` → `SCHEMA_VERSION`) | **4** |
+| App-Version (`sw.js` → `VERSION`) | **v3.2.0** |
+| Schema-Version (`api/lib/db.php` → `SCHEMA_VERSION`) | **6** |
 | Tests | keine automatisierten Tests |
 
 Der Funktionsumfang ist vollständig umgesetzt (siehe unten). Es gibt keine bekannten offenen Fehler.
@@ -19,7 +19,10 @@ Der Funktionsumfang ist vollständig umgesetzt (siehe unten). Es gibt keine beka
 - Einreichen: offene Auslagen einzeln auswählen → PDF (Übersicht + Stammdaten + Belege), das mit der
   Einreichung gespeichert wird und für Mitglied, Kassenwart und Vorstand abrufbar bleibt;
   jede Einreichung ist eine feste Gruppe, deren Status sich nur gemeinsam ändert (zurückziehen,
-  erstattet, veranlasst, ablehnen)
+  erstattet, veranlasst, ablehnen). Zurückgezogene/abgelehnte bleiben unter „Abgebrochen“ erhalten,
+  erstattete wandern nach 5 Minuten nach „Abgeschlossen“
+- Rückfragen: Kommentarverlauf je Einreichung (Mitglied, Kassenwart, Vorstand), Ungelesen-Hinweise;
+  Einreichungen und Verläufe sind einklappbar
 - Export (CSV/PDF/ZIP), Datensicherung als ZIP, Import von Backups der früheren Einzelplatz-Version
 - PWA: installierbar, App-Shell offline, Update-Hinweis, Versionsanzeige im Profil;
   Hell/Dunkel/System-Farbschema
@@ -44,19 +47,75 @@ Der Funktionsumfang ist vollständig umgesetzt (siehe unten). Es gibt keine beka
 | `anmeldung.php` | `POST anmeldung/passwort`, `anmeldung/mfa`, `anmeldung/passkey-optionen`, `anmeldung/passkey`, `abmeldung` |
 | `profil.php` | `GET profil`, `PUT profil/stammdaten`, `POST profil/passwort`, `profil/totp/{start,bestaetigen,deaktivieren,neue-codes}`, `POST/DELETE profil/passkey`, `POST profil/passkey-optionen` |
 | `auslagen.php` | `GET/POST/PUT/DELETE auslagen`, `GET/PUT/DELETE beleg` |
-| `einreichungen.php` | `POST/DELETE einreichungen`, `POST einreichungen/status`, `POST einreichungen/uebernahme`, `GET/PUT einreichungen/pdf` |
+| `einreichungen.php` | `GET/POST/DELETE einreichungen`, `POST einreichungen/{status,zurueckziehen,uebernahme}`, `GET/PUT einreichungen/pdf` |
+| `kommentare.php` | `GET/POST/DELETE kommentare`, `POST kommentare/gelesen`, `GET kommentare/ungelesen` |
 | `kasse.php` | `GET kasse/auslagen`, `GET kasse/beleg`, `GET kasse/einreichung/pdf`, `POST kasse/einreichung/status`, `POST kasse/einreichung/ablehnen` (Kassenwart/Vorstand) |
 | `admin.php` | `GET/POST/PUT admin/benutzer`, `POST admin/benutzer/{passwort,mfa-zuruecksetzen,loeschen}`, `GET/POST admin/db`, `POST admin/db/test` |
 
-## Datenbank (Schema 4)
+## Datenbank (Schema 6)
 
 `va_meta`, `va_benutzer` (mit `kassenrolle`), `va_wiederherstellung`, `va_passkeys`,
-`va_einreichungen` (mit `art`: einreichung/uebernahme), `va_auslagen` (mit `einreichung_id`, `veranlasst_am`, `veranlasst_von`),
-`va_belege` (LONGBLOB), `va_einreichung_pdfs` (LONGBLOB), `va_anmeldeversuche`.
+`va_einreichungen` (mit `art`: einreichung/uebernahme, `zustand`: aktiv/abgelehnt/zurueckgezogen, `erstattet_am`, Eckdaten), `va_auslagen` (mit `einreichung_id`, `veranlasst_am`, `veranlasst_von`),
+`va_belege` (LONGBLOB), `va_einreichung_pdfs` (LONGBLOB), `va_kommentare`, `va_kommentar_gelesen`, `va_anmeldeversuche`.
 
 ## Versionen
 
 Neueste zuerst.
+
+### v3.2.0 – Verlauf und Rückfragen
+
+- **Kommentare je Einreichung** (`va_kommentare`): Einreicher, Kassenwart und Vorstand schreiben in
+  einem Verlauf, optional mit Bezug auf eine Auslage („zu: LadenA, 11,50 €“, als Text gespeichert).
+  Admins ohne Kassenrolle sehen nichts. Nicht bearbeitbar; eigener Kommentar löschbar, solange
+  jünger als 5 Minuten und noch ohne Antwort einer anderen Person
+- **Statusprotokoll im Verlauf:** jede Statusänderung einer Einreichung wird mit Person, Rolle und
+  Zeit als Eintrag (`art` status/ablehnung/zurueckgezogen) festgehalten – Eingereicht (Anzahl,
+  Summe), Erstattung veranlasst, Veranlassung zurückgenommen, Erstattet und Rücknahme, Zurückgezogen,
+  Nicht genehmigt. Nicht löschbar; zählt als „neu“ für die anderen Beteiligten (Kasse sieht so auch
+  neue Einreichungen). Der Bereich heißt „💬 Verlauf“; Kommentarzähler zählen nur echte Kommentare,
+  und nur Kommentare anderer (keine Statuseinträge) beenden die Löschbarkeit eines Kommentars
+- **Ungelesen** (`va_kommentar_gelesen`): roter Punkt an „Übersicht“ bzw. „Kasse“, „💬 n neu“ an der
+  Einreichung, „neu“ am Kommentar. Gelesen gilt ein Verlauf, sobald er aufgeklappt war
+- **Einklappbare Bereiche** (`<details>`, `js/klappen.js`): Einreichungen, Verläufe,
+  „Abgeschlossen“ und „Abgebrochen“; Zustand bleibt bis zum Abmelden. Standard: Übersicht nur bei Ungelesenem bzw.
+  einzelner nicht erstatteter Einreichung offen; Kasse unter „Zu erledigen“ offen
+- **Abgebrochene Einreichungen bleiben erhalten:** Zurückziehen (Mitglied) und Ablehnen (Kasse)
+  lösen die Gruppe auf, die Auslagen sind wieder offen; die Einreichung behält aber `zustand`
+  (abgelehnt/zurueckgezogen), Anzahl, Summe, PDF und Kommentare und steht im Bereich „Abgebrochen“
+- **Abgeschlossen:** 5 Minuten nach „erstattet“ (`ABSCHLUSS_FRIST_S`, Spalte
+  `va_einreichungen.erstattet_am`) wandert eine Einreichung in der Übersicht in den eingeklappten
+  Bereich „Abgeschlossen“ (Status bleibt *Erstattet*, Kommentieren möglich). „↩ Doch noch nicht
+  erstattet“ geht nur innerhalb der Frist, der Server prüft das. Erstattete Einreichungen ohne
+  Zeitpunkt (Altbestand) gelten sofort als abgeschlossen. Die Ansicht zeichnet sich nach Ablauf der
+  Frist selbst neu; Restzeit kommt als `abschlussInS` vom Server (unabhängig von der Geräteuhr)
+- **Nicht genehmigen** verlangt eine Begründung, die im Verlauf erscheint (Formular statt Abfrage)
+- Kasse: Filter **💬 Ungelesen** – Einreichungen mit neuen Einträgen (Kommentare, Statusänderungen
+  anderer, neu eingegangene Einreichungen). Die Liste bleibt stabil, solange der Filter gewählt ist
+  (bis Filterwechsel oder „Aktualisieren“), damit gerade Gelesenes nicht wegspringt
+- Verläufe sind standardmäßig zugeklappt; gelesen ist ein Verlauf erst, wenn er bewusst aufgeklappt
+  wurde
+- Filterleisten (Übersicht, Kasse, Export) brechen in eine zweite Zeile um, statt seitlich zu scrollen
+- **Datensicherung in der App standardmäßig aus und ausgeblendet** (Export → „Backup speichern“ /
+  „Backup einspielen“), weil alle Daten in der Datenbank liegen. Einschalten nur für Tests bzw. den
+  Umstieg von der Einzelplatz-Version: `'datensicherung' => true` in `api/config/config.php`
+  (`GET status` liefert `datensicherung`); die 30-Tage-Backup-Erinnerung entfällt (der Hinweistext ist für alle gleich)
+- **Aktualisieren in der Kopfzeile** neben dem Farbschema-Knopf, in jeder Ansicht nach der
+  Anmeldung: lädt eigene Auslagen, Einreichungen, Verläufe und (mit Kassenrolle) die Kasse neu und
+  setzt die Liste „Ungelesen“ neu. Unter 600 px Fensterbreite nur das Symbol
+- Bezug eines Kommentars auf eine Auslage zeigt Händler, Betrag und Hinweis (in der Auswahl und im
+  gespeicherten Kommentar), damit gleichnamige Händler unterscheidbar sind
+- **Breitere Darstellung auf Laptop/Desktop:** Inhaltsbreite wächst mit dem Fenster (600 → 760 px
+  ab 800 px Fensterbreite, 960 px ab 1100 px; CSS-Variable `--inhalt-breite`). Formulare bleiben
+  höchstens 640 px breit, die Ansicht „Neu“ bleibt schmal
+- Detail-Fenster: Rückfragen zur jeweiligen Auslage
+- Verwerfen (`DELETE einreichungen`) nur noch als technischer Rückbau direkt nach dem Einreichen
+  (PDF nicht gespeichert, Download-Dialog abgebrochen): höchstens 30 Minuten alt, ohne Kommentare.
+  Das Zurückziehen hat die eigene Route `POST einreichungen/zurueckziehen`
+- Neue Routen: `kommentare.php` (`GET/POST/DELETE kommentare`, `POST kommentare/gelesen`,
+  `GET kommentare/ungelesen`), `GET einreichungen`; `GET kasse/auslagen` liefert zusätzlich
+  `einreichungen` (Eckdaten inkl. abgebrochener)
+- **Schema 5**: `va_kommentare`, `va_kommentar_gelesen`, `va_einreichungen.zustand/beendet_am/anzahl/summe`;
+  **Schema 6**: `va_einreichungen.erstattet_am`
 
 ### v3.1.1 – Kassenwart, Vorstand und Einreichungen
 
@@ -126,8 +185,6 @@ bleibt reine SemVer). Eine Version 3.1.0 wurde nicht veröffentlicht.
 - [ ] Automatisierte Tests zumindest für die API-Routen
 - [ ] Ende-zu-Ende-Test auf echtem Webhosting (Apache mit `.htaccess`, nginx-Regeln aus der README)
 - [x] Weitere Benutzerrollen Kassenwart und Vorstand (v3.1.1)
-- [ ] Einfache Kommentarfunktion für Auslagen und Einreichungen, damit Kassenwart oder Vorstand
-  Rückfragen stellen und der Einreicher antworten kann (Branch `feature/kommentarfunktion`;
-  Einreichungen gibt es seit v3.1.1 als Datensatz, Vorstand darf dann auch kommentieren)
+- [x] Kommentarfunktion für Einreichungen (v3.2.0, Konzept in `docs/konzept-kommentarfunktion.md`)
 - [ ] E-Mail-Versand über SMTP (Zugangsdaten im Admin-Bereich, ohne Fremdbibliothek), z. B. um
-  den Kassenwart auf neue Einreichungen hinzuweisen
+  den Kassenwart auf neue Einreichungen und Mitglieder auf Rückfragen hinzuweisen
