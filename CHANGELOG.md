@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| App-Version (`sw.js` → `VERSION`) | **3.1.0** |
+| App-Version (`sw.js` → `VERSION`) | **3.1.1** |
 | Schema-Version (`api/lib/db.php` → `SCHEMA_VERSION`) | **2** |
 | Tests | keine automatisierten Tests |
 
@@ -53,6 +53,11 @@ Der Funktionsumfang ist vollständig umgesetzt (siehe unten). Es gibt keine beka
 ## Versionen
 
 Neueste zuerst.
+
+### 3.1.1
+
+- Einreichen: PDF-Erstellung brach mit „spalten.find(...) is undefined“ ab. Ursache war der
+  Zeilenumbruch der Status-Spalte (3.1.0), die es im Einreichungs-PDF gar nicht gibt
 
 ### 3.1.0 – Kassenwart und Vorstand
 
