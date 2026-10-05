@@ -13,6 +13,12 @@ function maxBelegBytes(): int
     return min(MAX_BELEG_BYTES, iniBytes((string)ini_get('post_max_size')) - 1024);
 }
 
+/** Einreichungs-PDFs enthalten alle Belege → nur durch den Server begrenzt, nicht durch MAX_BELEG_BYTES */
+function maxPdfBytes(): int
+{
+    return iniBytes((string)ini_get('post_max_size')) - 1024;
+}
+
 route('GET', 'status', function (): void {
     $eingerichtet = istEingerichtet();
     $benutzer = $eingerichtet ? aktuellerBenutzer() : null;
@@ -21,6 +27,7 @@ route('GET', 'status', function (): void {
         'mfaAusstehend' => !$benutzer && !empty($_SESSION['mfa_ausstehend']),
         'benutzer'     => $benutzer ? benutzerFuerClient($benutzer) : null,
         'maxBelegBytes' => maxBelegBytes(),
+        'maxPdfBytes'  => maxPdfBytes(),
         'passkeysMoeglich' => istHttps() || hostName() === 'localhost',
     ]);
 });

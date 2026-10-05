@@ -2,8 +2,18 @@
 // =============================================
 // ADMIN: Benutzerverwaltung & Datenbank-Verbindung
 // Schutz vor Aussperren: der letzte aktive Admin kann weder gesperrt, herabgestuft noch gelöscht werden.
+// Konten mit veranlassten Erstattungen bleiben erhalten (Nachvollziehbarkeit) – nur sperren möglich.
 // =============================================
 declare(strict_types=1);
+
+const KASSENROLLEN = ['keine', 'kassenwart', 'vorstand'];
+
+function kassenrolleAusEingabe(array $e): string
+{
+    $rolle = $e['kassenrolle'] ?? 'keine';
+    if (!in_array($rolle, KASSENROLLEN, true)) throw new ApiFehler('Ungültige Kassenrolle.');
+    return $rolle;
+}
 
 function benutzerZeileFuerAdmin(array $b): array
 {
@@ -11,6 +21,7 @@ function benutzerZeileFuerAdmin(array $b): array
         'id'                  => (int)$b['id'],
         'benutzername'        => $b['benutzername'],
         'rolle'               => $b['rolle'],
+        'kassenrolle'         => $b['kassenrolle'],
         'aktiv'               => (bool)$b['aktiv'],
         'mussPasswortAendern' => (bool)$b['muss_passwort_aendern'],
         'name'                => trim($b['vorname'] . ' ' . $b['nachname']),
@@ -51,11 +62,12 @@ route('POST', 'admin/benutzer', function (): void {
     $name = textFeld($e, 'benutzername', 50, true);
     pruefeBenutzername($name);
     $rolle = ($e['rolle'] ?? 'user') === 'admin' ? 'admin' : 'user';
+    $kassenrolle = kassenrolleAusEingabe($e);
     $startpasswort = erzeugeStartpasswort();
     try {
-        abfrage('INSERT INTO va_benutzer (benutzername, passwort_hash, rolle, muss_passwort_aendern, vorname, nachname, webauthn_handle)
-            VALUES (?, ?, ?, 1, ?, ?, ?)', [
-            $name, password_hash($startpasswort, PASSWORD_DEFAULT), $rolle,
+        abfrage('INSERT INTO va_benutzer (benutzername, passwort_hash, rolle, kassenrolle, muss_passwort_aendern, vorname, nachname, webauthn_handle)
+            VALUES (?, ?, ?, ?, 1, ?, ?, ?)', [
+            $name, password_hash($startpasswort, PASSWORD_DEFAULT), $rolle, $kassenrolle,
             textFeld($e, 'vorname'), textFeld($e, 'nachname'), base64urlEncode(random_bytes(32)),
         ]);
     } catch (PDOException $ex) {
@@ -74,6 +86,9 @@ route('PUT', 'admin/benutzer', function (): void {
         $rolle = $e['rolle'] === 'admin' ? 'admin' : 'user';
         if ($rolle === 'user' && $ziel['rolle'] === 'admin') pruefeLetzterAdmin((int)$ziel['id']);
         abfrage('UPDATE va_benutzer SET rolle = ? WHERE id = ?', [$rolle, $ziel['id']]);
+    }
+    if (array_key_exists('kassenrolle', $e)) {
+        abfrage('UPDATE va_benutzer SET kassenrolle = ? WHERE id = ?', [kassenrolleAusEingabe($e), $ziel['id']]);
     }
     if (array_key_exists('aktiv', $e)) {
         $aktiv = (bool)$e['aktiv'];
@@ -115,6 +130,12 @@ route('POST', 'admin/benutzer/loeschen', function (): void {
     $ziel = ladeBenutzerOderFehler((int)($_GET['id'] ?? 0));
     if ((int)$ziel['id'] === (int)$admin['id']) throw new ApiFehler('Du kannst dich nicht selbst löschen.');
     if ($ziel['rolle'] === 'admin') pruefeLetzterAdmin((int)$ziel['id']);
+    $veranlasst = (int)abfrage('SELECT COUNT(*) FROM va_auslagen WHERE benutzer_id = ? AND veranlasst_am IS NOT NULL',
+        [$ziel['id']])->fetchColumn();
+    if ($veranlasst) {
+        throw new ApiFehler("Für „{$ziel['benutzername']}“ wurden bereits Erstattungen veranlasst. Damit das nachvollziehbar bleibt, "
+            . 'kann das Konto nicht gelöscht werden – bitte stattdessen sperren.', 409);
+    }
     abfrage('DELETE FROM va_benutzer WHERE id = ?', [$ziel['id']]); // Auslagen, Belege, Passkeys per CASCADE
     antworte();
 });

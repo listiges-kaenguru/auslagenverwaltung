@@ -8,15 +8,19 @@ Läuft auf normalem Shared-Webhosting mit PHP und MySQL – ohne Build-Schritt, 
 **Funktionen**
 
 - Auslagen erfassen (Datum, Händler, Betrag, Notiz, Beleg als Foto oder PDF), Status
-  offen → eingereicht → erstattet
+  offen → eingereicht → Erstattung veranlasst → erstattet
 - Export als CSV, PDF oder ZIP, Datensicherung als ZIP
 - Installierbar als App (PWA), Hell-/Dunkel-Modus
 - Benutzerkonten mit Login/Logout, Passwort ändern, Rollen **Admin** und **Benutzer**
+- **Kassenrollen** zusätzlich zur Rolle: **Kassenwart** sieht eingereichte Auslagen aller Mitglieder
+  (mit Belegen und IBAN) und setzt „Erstattung veranlasst“; **Vorstand** sieht sie nur lesend.
+  Beide können eine Einreichung ablehnen. Eingereichte Auslagen bilden eine feste Gruppe: Status
+  nur gemeinsam, einzeln nicht mehr lösch- oder änderbar
 - Zwei-Faktor-Anmeldung per **TOTP** (Authenticator-App) inkl. 10 Wiederherstellungscodes
 - Anmeldung per **Passkey** (Fingerabdruck, Face-ID, Geräte-PIN) – ersetzt Passwort + TOTP
 - **Stammdaten im Profil** (Name, IBAN, Ort) → werden ins Einreichungs-PDF übernommen
 - **Auswahl beim Einreichen**: offene Auslagen einzeln an- oder abwählen
-- **Admin-Bereich im Profil**: Benutzer anlegen, sperren, Rolle ändern, Passwort bzw.
+- **Admin-Bereich im Profil**: Benutzer anlegen, sperren, Rolle und Kassenrolle ändern, Passwort bzw.
   2FA/Passkeys zurücksetzen, löschen – und die **Datenbank-Verbindung** ändern
 - Import von Backups der früheren Einzelplatz-Version (Export → „Backup einspielen“)
 
@@ -97,11 +101,17 @@ Nach einem Wechsel müssen sich alle neu anmelden.
 - Passwortwechsel, Sperren oder MFA-Reset beenden alle anderen Sitzungen des Benutzers
 - CSRF-Schutz über eigenen Anfrage-Header und Origin-Prüfung
 - Jeder Benutzer sieht ausschließlich seine eigenen Auslagen; Admins verwalten Konten, sehen aber
-  keine fremden Auslagen
+  keine fremden Auslagen. Einzige Ausnahme: Kassenwart und Vorstand sehen fremde Auslagen ab Status
+  „eingereicht“ (offene nie). Inhalte ändern können sie nicht: Der Kassenwart setzt nur
+  „Erstattung veranlasst“, Kassenwart und Vorstand können eine Einreichung als Ganzes ablehnen.
+  Die IBAN der Mitglieder sieht nur der Kassenwart
+- Eingereichte Auslagen sind einzeln nicht mehr änderbar oder löschbar; nach veranlasster Erstattung
+  lässt sich auch die Einreichung nicht mehr zurückziehen. Konten mit solchen Auslagen kann der Admin
+  nur sperren, nicht löschen
 - Der letzte aktive Admin kann nicht gesperrt, herabgestuft oder gelöscht werden
 
 **Datensicherung**: regelmäßig die Datenbank sichern (z. B. `mysqldump` oder Backup-Funktion des
-Hosters) – sie enthält auch alle Belege. Zusätzlich kann jeder Benutzer unter
+Hosters) – sie enthält auch alle Belege und Einreichungs-PDFs. Zusätzlich kann jeder Benutzer unter
 Export → Datensicherung ein ZIP seiner eigenen Daten speichern.
 
 ## Umstieg von der Einzelplatz-Version
@@ -129,9 +139,10 @@ js/ansicht-profil.js      Profil, TOTP, Passkeys, Administration
 js/webauthn.js            Passkeys im Browser
 js/speicher.js            Auslagen/Belege über die API (statt localStorage/IndexedDB)
 js/einreichen.js          Auswahldialog + Einreichungs-PDF
+js/ansicht-kasse.js       Kasse: Einreichungen aller Mitglieder (Kassenwart/Vorstand)
 api/index.php             einziger öffentlicher PHP-Einstieg (Router: api/?r=…)
 api/lib/                  HTTP, Konfiguration, DB/Schema, Sitzung, TOTP, WebAuthn
-api/routen/               Einrichtung, Anmeldung, Profil, Auslagen/Belege, Admin
+api/routen/               Einrichtung, Anmeldung, Profil, Auslagen/Einreichungen/Belege, Kasse, Admin
 api/config/config.php     wird bei der Einrichtung erzeugt (DB-Zugang + Schlüssel)
 ```
 

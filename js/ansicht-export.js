@@ -203,10 +203,12 @@ registriereAktionen({
     if (!datei) return;
     zeigeToast('♻️ Backup wird eingelesen …', 60_000);
     try {
-      const { importiert, uebersprungen, fehler } = await spieleBackupEin(datei,
+      const { importiert, uebersprungen, zurueckgestuft, fehler } = await spieleBackupEin(datei,
         (n, gesamt) => zeigeToast(`♻️ Übertrage ${n} von ${gesamt} …`, 60_000));
       zeigeToast(`✓ ${importiert} importiert${uebersprungen ? `, ${uebersprungen} bereits vorhanden` : ''}`
-        + (fehler.length ? ` · ⚠ ${fehler.length} fehlgeschlagen` : ''), 6000);
+        + (fehler.length ? ` · ⚠ ${fehler.length} fehlgeschlagen` : '')
+        + (zurueckgestuft ? ` · ${zurueckgestuft} mit „Erstattung veranlasst“ stehen jetzt auf „Eingereicht“` : ''),
+        zurueckgestuft ? 9000 : 6000);
       if (fehler.length) console.warn('[VereinsAuslagen] Import-Fehler:', fehler);
       meldeDatenAenderung();
     } catch (err) {

@@ -329,7 +329,8 @@ function zeichneUebersicht(ctx, d, belegSeite) {
       datum:    [formatiereDatum(a.datum)],
       haendler: umbrechen(a.haendler, normal, GROESSE, breiteVon('haendler') - 2 * PAD_H, 3),
       zweck:    umbrechen(a.notiz, normal, GROESSE, breiteVon('zweck') - 2 * PAD_H, 4),
-      status:   [statusInfo(a.status).label],
+      // Status-Spalte gibt es nur im Export, nicht im Einreichungs-PDF
+      status:   d.mitStatus ? umbrechen(statusInfo(a.status).label, normal, GROESSE, breiteVon('status') - 2 * PAD_H, 2) : [],
       betrag:   [formatiereBetrag(a.betrag)],
       beleg:    [hatBeleg ? `S. ${probelauf ? 0 : belegSeite.get(a.id)}` : 'fehlt']
     };

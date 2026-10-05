@@ -4,7 +4,7 @@
 // =============================================
 import { apiGet, apiPost } from './api.js';
 
-let status = { eingerichtet: true, benutzer: null, mfaAusstehend: false, maxBelegBytes: 15 * 1024 * 1024, passkeysMoeglich: false };
+let status = { eingerichtet: true, benutzer: null, mfaAusstehend: false, maxBelegBytes: 15 * 1024 * 1024, maxPdfBytes: 0, passkeysMoeglich: false };
 
 export async function ladeStatus() {
   status = await apiGet('status', { still401: true });
@@ -14,7 +14,11 @@ export async function ladeStatus() {
 export const serverStatus     = () => status;
 export const aktuellerBenutzer = () => status.benutzer;
 export const istAdmin          = () => status.benutzer?.rolle === 'admin';
+/** Kassenwart oder Vorstand → Ansicht „Kasse“ (Vorstand nur lesend) */
+export const hatKassenrolle    = () => ['kassenwart', 'vorstand'].includes(status.benutzer?.kassenrolle);
+export const istKassenwart     = () => status.benutzer?.kassenrolle === 'kassenwart';
 export const maxBelegBytes     = () => status.maxBelegBytes;
+export const maxPdfBytes       = () => status.maxPdfBytes;
 
 /** Passkeys brauchen HTTPS (oder localhost) und Browser-Unterstützung */
 export const passkeysMoeglich = () => status.passkeysMoeglich && !!window.PublicKeyCredential;

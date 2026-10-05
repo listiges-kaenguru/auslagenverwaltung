@@ -5,10 +5,14 @@
 // =============================================
 declare(strict_types=1);
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 4;
 
 /** Tabellen in Abhängigkeitsreihenfolge (für Kopieren beim DB-Wechsel) */
-const TABELLEN = ['va_benutzer', 'va_wiederherstellung', 'va_passkeys', 'va_auslagen', 'va_belege'];
+const TABELLEN = ['va_benutzer', 'va_wiederherstellung', 'va_passkeys', 'va_einreichungen', 'va_auslagen', 'va_belege',
+    'va_einreichung_pdfs'];
+
+/** Tabellen mit großen Binärdaten (Spalte „daten“) → beim Kopieren zeilenweise, Schlüsselspalte */
+const BLOB_TABELLEN = ['va_belege' => 'auslage_id', 'va_einreichung_pdfs' => 'einreichung_id'];
 
 /** Neue Verbindung aufbauen; wirft ApiFehler mit verständlicher Meldung */
 function verbinde(array $db): PDO
@@ -159,9 +163,94 @@ function migriere(PDO $pdo): void
         ) {$opt}");
     }
 
+    if ($version < 2) {
+        // Kassenrollen, Zwischenstatus „Erstattung veranlasst“ und Einreichungen als Datensatz.
+        // DDL ist nicht transaktional → jeder Schritt prüft, ob er schon erledigt ist.
+        if (!spalteVorhanden($pdo, 'va_benutzer', 'kassenrolle')) {
+            $pdo->exec("ALTER TABLE va_benutzer
+                ADD COLUMN kassenrolle ENUM('keine','kassenwart','vorstand') NOT NULL DEFAULT 'keine' AFTER rolle");
+        }
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS va_einreichungen (
+            id CHAR(36) CHARACTER SET ascii NOT NULL PRIMARY KEY,
+            benutzer_id INT UNSIGNED NOT NULL,
+            erstellt_am DATETIME(3) NOT NULL,
+            KEY ix_benutzer (benutzer_id),
+            CONSTRAINT fk_einr_benutzer FOREIGN KEY (benutzer_id) REFERENCES va_benutzer(id) ON DELETE CASCADE
+        ) {$opt}");
+
+        $pdo->exec("ALTER TABLE va_auslagen
+            MODIFY status ENUM('offen','eingereicht','veranlasst','erstattet') NOT NULL DEFAULT 'offen'");
+        if (!spalteVorhanden($pdo, 'va_auslagen', 'einreichung_id')) {
+            $pdo->exec("ALTER TABLE va_auslagen
+                ADD COLUMN einreichung_id CHAR(36) CHARACTER SET ascii NULL AFTER status,
+                ADD COLUMN veranlasst_am DATETIME(3) NULL AFTER einreichung_id,
+                ADD COLUMN veranlasst_von INT UNSIGNED NULL AFTER veranlasst_am,
+                ADD KEY ix_status (status),
+                ADD CONSTRAINT fk_ausl_einreichung FOREIGN KEY (einreichung_id) REFERENCES va_einreichungen(id) ON DELETE SET NULL,
+                ADD CONSTRAINT fk_ausl_veranlasst FOREIGN KEY (veranlasst_von) REFERENCES va_benutzer(id) ON DELETE SET NULL");
+        }
+    }
+
+    if ($version < 3) {
+        // Einreichungen sind feste Gruppen: jede nicht offene Auslage gehört zu genau einer.
+        // Altbestand (vor 3.1) wird je Benutzer und Status zu einer „übernommenen“ Einreichung gebündelt.
+        if (!spalteVorhanden($pdo, 'va_einreichungen', 'art')) {
+            $pdo->exec("ALTER TABLE va_einreichungen
+                ADD COLUMN art ENUM('einreichung','uebernahme') NOT NULL DEFAULT 'einreichung' AFTER benutzer_id");
+        }
+        gruppiereVerwaisteAuslagen($pdo);
+    }
+
+    if ($version < 4) {
+        // Das beim Einreichen erzeugte PDF gehört zur Einreichung (fällt beim Zurückziehen/Ablehnen mit weg)
+        $pdo->exec("CREATE TABLE IF NOT EXISTS va_einreichung_pdfs (
+            einreichung_id CHAR(36) CHARACTER SET ascii NOT NULL PRIMARY KEY,
+            groesse INT UNSIGNED NOT NULL,
+            daten LONGBLOB NOT NULL,
+            erstellt_am DATETIME(3) NOT NULL,
+            CONSTRAINT fk_epdf_einreichung FOREIGN KEY (einreichung_id) REFERENCES va_einreichungen(id) ON DELETE CASCADE
+        ) {$opt}");
+    }
+
     $stmt = $pdo->prepare("INSERT INTO va_meta (schluessel, wert) VALUES ('schema_version', ?)
         ON DUPLICATE KEY UPDATE wert = VALUES(wert)");
     $stmt->execute([(string)SCHEMA_VERSION]);
+}
+
+function neueUuid(): string
+{
+    $b = random_bytes(16);
+    $b[6] = chr((ord($b[6]) & 0x0f) | 0x40);
+    $b[8] = chr((ord($b[8]) & 0x3f) | 0x80);
+    return vsprintf('%s%s-%s-%s-%s-%s%s%s', str_split(bin2hex($b), 4));
+}
+
+/**
+ * Nicht offene Auslagen ohne Einreichung (Altbestand, abgebrochener Import) je Benutzer und Status
+ * zu einer Einreichung der Art „uebernahme“ bündeln. $benutzerId = null → alle Benutzer.
+ */
+function gruppiereVerwaisteAuslagen(PDO $pdo, ?int $benutzerId = null): void
+{
+    $filter = $benutzerId === null ? '' : ' AND benutzer_id = ?';
+    $werte = $benutzerId === null ? [] : [$benutzerId];
+    $gruppen = abfrage("SELECT benutzer_id, status, MIN(geaendert_am) AS seit FROM va_auslagen
+        WHERE status <> 'offen' AND einreichung_id IS NULL{$filter} GROUP BY benutzer_id, status", $werte, $pdo)->fetchAll();
+    foreach ($gruppen as $g) {
+        $id = neueUuid();
+        abfrage("INSERT INTO va_einreichungen (id, benutzer_id, art, erstellt_am) VALUES (?, ?, 'uebernahme', ?)",
+            [$id, $g['benutzer_id'], $g['seit']], $pdo);
+        abfrage('UPDATE va_auslagen SET einreichung_id = ?
+            WHERE benutzer_id = ? AND status = ? AND einreichung_id IS NULL', [$id, $g['benutzer_id'], $g['status']], $pdo);
+    }
+}
+
+function spalteVorhanden(PDO $pdo, string $tabelle, string $spalte): bool
+{
+    $stmt = $pdo->prepare('SELECT COUNT(*) FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?');
+    $stmt->execute([$tabelle, $spalte]);
+    return (bool)$stmt->fetchColumn();
 }
 
 /** Übersicht über eine (Ziel-)Datenbank für den Admin-Dialog */
@@ -187,18 +276,21 @@ function kopiereDaten(PDO $quelle, PDO $ziel): void
     $ziel->beginTransaction();
     try {
         foreach (TABELLEN as $tabelle) {
-            if ($tabelle === 'va_belege') {
-                // Belege einzeln laden → kein riesiger Speicherbedarf
-                $ids = $quelle->query('SELECT auslage_id FROM va_belege')->fetchAll(PDO::FETCH_COLUMN);
-                $lesen = $quelle->prepare('SELECT * FROM va_belege WHERE auslage_id = ?');
-                $schreiben = $ziel->prepare('INSERT INTO va_belege (auslage_id, typ, groesse, daten) VALUES (?, ?, ?, ?)');
+            if (isset(BLOB_TABELLEN[$tabelle])) {
+                // Belege/PDFs einzeln laden → kein riesiger Speicherbedarf
+                $schluessel = BLOB_TABELLEN[$tabelle];
+                $ids = $quelle->query("SELECT {$schluessel} FROM {$tabelle}")->fetchAll(PDO::FETCH_COLUMN);
+                $lesen = $quelle->prepare("SELECT * FROM {$tabelle} WHERE {$schluessel} = ?");
+                $schreiben = null;
                 foreach ($ids as $id) {
                     $lesen->execute([$id]);
                     $z = $lesen->fetch();
-                    $schreiben->bindValue(1, $z['auslage_id']);
-                    $schreiben->bindValue(2, $z['typ']);
-                    $schreiben->bindValue(3, (int)$z['groesse'], PDO::PARAM_INT);
-                    $schreiben->bindValue(4, $z['daten'], PDO::PARAM_LOB);
+                    $spalten = array_keys($z);
+                    $schreiben ??= $ziel->prepare(sprintf('INSERT INTO %s (%s) VALUES (%s)', $tabelle,
+                        implode(', ', $spalten), implode(', ', array_fill(0, count($spalten), '?'))));
+                    foreach ($spalten as $i => $spalte) {
+                        $schreiben->bindValue($i + 1, $z[$spalte], $spalte === 'daten' ? PDO::PARAM_LOB : PDO::PARAM_STR);
+                    }
                     $schreiben->execute();
                 }
                 continue;

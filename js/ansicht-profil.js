@@ -1,7 +1,7 @@
 // =============================================
 // ANSICHT 4: PROFIL
 // Stammdaten · Passwort · Zwei-Faktor (TOTP) · Passkeys · Abmelden · App-Version
-// Für Admins zusätzlich „Administration“: Benutzerverwaltung und Datenbank-Verbindung
+// Für Admins zusätzlich „Administration“: Benutzerverwaltung (inkl. Kassenrolle) und Datenbank-Verbindung
 // =============================================
 import {
   escapeHtml, formatiereDatum, formatiereGroesse, plural, zeigeToast, mitLadezustand, registriereAktionen,
@@ -14,6 +14,11 @@ import { erstellePasskey, geraeteName } from './webauthn.js';
 import { versionsInfo } from './pwa.js';
 
 const MIN_PASSWORT = 10;
+
+/** Fachliche Rolle zusätzlich zu Benutzer/Admin (Einblick in eingereichte Auslagen aller Mitglieder) */
+const KASSENROLLEN = { keine: 'Keine', kassenwart: 'Kassenwart', vorstand: 'Vorstand' };
+const kassenrolleBadge = (rolle) => (KASSENROLLEN[rolle] && rolle !== 'keine'
+  ? `<span class="badge badge--veranlasst">${KASSENROLLEN[rolle]}</span>` : '');
 
 // Zustand der Ansicht (bleibt beim Neu-Rendern erhalten)
 let totpEinrichtung = null;     // { geheimnis, uri, qrSvg }
@@ -41,6 +46,7 @@ export function rendereProfil(container) {
           <div class="profil-kopf__unter">
             ${escapeHtml(b.benutzername)}
             <span class="badge ${b.rolle === 'admin' ? 'badge--eingereicht' : 'badge--offen'}">${b.rolle === 'admin' ? 'Administrator' : 'Benutzer'}</span>
+            ${kassenrolleBadge(b.kassenrolle)}
           </div>
         </div>
       </div>
@@ -211,11 +217,11 @@ function versionHtml() {
   const { laufend, neu, ermittelt, updateBereit } = versionsInfo();
   return `
     <h3 class="abschnitt__titel" id="titelVersion">App-Version</h3>
-    <p class="abschnitt__text">Laufende Version: <strong>${escapeHtml(laufend || (ermittelt ? 'unbekannt' : 'wird ermittelt …'))}</strong></p>
+    <p class="abschnitt__text">Laufende Version: <strong>${escapeHtml(laufend ? `v${laufend}` : (ermittelt ? 'unbekannt' : 'wird ermittelt …'))}</strong></p>
     ${updateBereit ? `
       <div class="codes-kasten" role="status">
         <p class="codes-kasten__titel">Aktualisierung verfügbar</p>
-        <p class="abschnitt__text">Neue Version: <strong>${escapeHtml(neu || 'wird ermittelt …')}</strong> – deine Daten bleiben erhalten.</p>
+        <p class="abschnitt__text">Neue Version: <strong>${escapeHtml(neu ? `v${neu}` : 'wird ermittelt …')}</strong> – deine Daten bleiben erhalten.</p>
         <button type="button" class="btn btn-primaer btn-klein" data-aktion="update-installieren">🔄 Jetzt aktualisieren</button>
       </div>`
       : ermittelt ? '<p class="klein-hinweis klein-hinweis--links">Die App ist auf dem neuesten Stand.</p>' : ''}`;
@@ -261,6 +267,12 @@ function adminHtml(ich) {
               <option value="admin">Administrator</option>
             </select>
           </div>
+          <div>
+            <label class="formular-label" for="neuKassenrolle">Kassenrolle</label>
+            <select id="neuKassenrolle" name="kassenrolle" class="formular-feld">
+              ${Object.entries(KASSENROLLEN).map(([wert, label]) => `<option value="${wert}">${label}</option>`).join('')}
+            </select>
+          </div>
           <div class="knopf-reihe">
             <button type="button" class="btn btn-sekundaer btn-klein" data-aktion="benutzer-neu-abbrechen">Abbrechen</button>
             <button type="submit" class="btn btn-primaer btn-klein">Anlegen</button>
@@ -281,6 +293,7 @@ function benutzerKarteHtml(u, ich) {
   const selbst = u.id === ich.id;
   const merkmale = [
     u.rolle === 'admin' ? '<span class="badge badge--eingereicht">Admin</span>' : '<span class="badge badge--offen">Benutzer</span>',
+    kassenrolleBadge(u.kassenrolle),
     u.aktiv ? '' : '<span class="badge badge--gesperrt">Gesperrt</span>',
     u.mussPasswortAendern ? '<span class="badge badge--offen">Startpasswort</span>' : '',
     u.totpAktiv ? '<span class="badge badge--erstattet">2FA</span>' : '',
@@ -310,7 +323,19 @@ function benutzerKarteHtml(u, ich) {
         <button type="button" class="btn btn-gefahr btn-klein" data-aktion="bestaetigung-starten" data-zweck="loeschen" data-id="${u.id}">
           Löschen</button>
       </div>`}
+      ${kassenrolleWahlHtml(u)}
     </li>`;
+}
+
+/** Kassenrolle als Knopfgruppe (auch für das eigene Konto – sie berührt keine Admin-Rechte) */
+function kassenrolleWahlHtml(u) {
+  return `
+    <div class="kassenrolle-wahl" role="group" aria-label="Kassenrolle von ${escapeHtml(u.benutzername)}">
+      <span class="kassenrolle-wahl__label">Kassenrolle:</span>
+      ${Object.entries(KASSENROLLEN).map(([wert, label]) => `
+        <button type="button" class="filter-chip" data-aktion="admin-kassenrolle" data-id="${u.id}"
+          data-kassenrolle="${wert}" aria-pressed="${u.kassenrolle === wert}">${label}</button>`).join('')}
+    </div>`;
 }
 
 function dbHtml() {
@@ -536,7 +561,9 @@ registriereAktionen({
       return;
     }
     return adminAktion(form.querySelector('[type="submit"]'), async () => {
-      const r = await apiPost('admin/benutzer', { benutzername, vorname: f.vorname.value, nachname: f.nachname.value, rolle: f.rolle.value });
+      const r = await apiPost('admin/benutzer', {
+        benutzername, vorname: f.vorname.value, nachname: f.nachname.value, rolle: f.rolle.value, kassenrolle: f.kassenrolle.value
+      });
       neuerBenutzerOffen = false;
       startpasswort = { benutzername, passwort: r.startpasswort };
     });
@@ -549,6 +576,19 @@ registriereAktionen({
     await apiPut(mitId('admin/benutzer', btn.dataset.id), { rolle: btn.dataset.rolle });
     zeigeToast('✓ Rolle geändert');
   }),
+
+  'admin-kassenrolle': (btn) => {
+    if (btn.getAttribute('aria-pressed') === 'true') return;
+    return adminAktion(btn, async () => {
+      await apiPut(mitId('admin/benutzer', btn.dataset.id), { kassenrolle: btn.dataset.kassenrolle });
+      zeigeToast('✓ Kassenrolle geändert');
+      // Eigene Rolle geändert → Navigation („Kasse“) sofort anpassen
+      if (Number(btn.dataset.id) === aktuellerBenutzer()?.id) {
+        await ladeStatus();
+        document.dispatchEvent(new CustomEvent('benutzer-geaendert'));
+      }
+    });
+  },
 
   'admin-aktiv': (btn) => adminAktion(btn, async () => {
     await apiPut(mitId('admin/benutzer', btn.dataset.id), { aktiv: btn.dataset.aktiv === '1' });
