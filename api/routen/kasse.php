@@ -3,9 +3,12 @@
 // KASSE: Einblick für Kassenwart und Vorstand
 // Gezielte Ausnahme von „nur eigene Auslagen“: Wer eine Kassenrolle hat, sieht die Auslagen
 // aller Mitglieder ab Status „eingereicht“ – offene Auslagen bleiben privat.
-// - Vorstand: nur lesen
-// - Kassenwart: zusätzlich „Erstattung veranlasst“ setzen bzw. zurücknehmen, solange das
-//   Mitglied den Eingang noch nicht als „erstattet“ bestätigt hat
+// Gearbeitet wird immer mit ganzen Einreichungen (Gruppen), nie mit einzelnen Auslagen:
+// - Kassenwart: „Erstattung veranlasst“ setzen bzw. zurücknehmen, solange das Mitglied den
+//   Eingang noch nicht als „erstattet“ bestätigt hat
+// - Kassenwart und Vorstand: eine Einreichung ablehnen, solange sie „eingereicht“ ist
+//   (→ alle Auslagen wieder offen, Gruppe aufgelöst; das Mitglied kann neu einreichen)
+// - Vorstand: sonst nur lesen
 // Admins sehen hierüber nichts, sofern sie nicht selbst eine Kassenrolle haben.
 // =============================================
 declare(strict_types=1);
@@ -19,17 +22,20 @@ function kassenAuslageFuerClient(array $a, bool $mitIban): array
             // Bankverbindung braucht nur, wer die Überweisung veranlasst
             'iban' => $mitIban ? $a['mitglied_iban'] : null,
         ],
-        'eingereichtAm' => isoZeit($a['einreichung_am']),
     ];
 }
 
 route('GET', 'kasse/auslagen', function (): void {
     $ich = erfordereKassenrolle();
+    // Jede eingereichte Auslage gehört zu einer Einreichung – Reste (z. B. abgebrochener Import) bündeln
+    $verwaist = abfrage("SELECT 1 FROM va_auslagen WHERE status <> 'offen' AND einreichung_id IS NULL LIMIT 1")->fetchColumn();
+    if ($verwaist) gruppiereVerwaisteAuslagen(db());
     $zeilen = abfrage("SELECT a.*,
             COALESCE(NULLIF(TRIM(CONCAT(v.vorname, ' ', v.nachname)), ''), v.benutzername) AS veranlasst_von_name,
             COALESCE(NULLIF(TRIM(CONCAT(m.vorname, ' ', m.nachname)), ''), m.benutzername) AS mitglied_name,
             m.iban AS mitglied_iban,
-            e.erstellt_am AS einreichung_am
+            e.erstellt_am AS einreichung_am, e.art AS einreichung_art,
+            EXISTS(SELECT 1 FROM va_einreichung_pdfs p WHERE p.einreichung_id = a.einreichung_id) AS einreichung_hat_pdf
         FROM va_auslagen a
         JOIN va_benutzer m ON m.id = a.benutzer_id
         LEFT JOIN va_benutzer v ON v.id = a.veranlasst_von
@@ -48,31 +54,40 @@ route('GET', 'kasse/beleg', function (): void {
     sendeBeleg($id);
 });
 
-/** status = "veranlasst" (aus „eingereicht“) oder "eingereicht" (Rücknahme aus „veranlasst“) */
-route('POST', 'kasse/status', function (): void {
+route('GET', 'kasse/einreichung/pdf', function (): void {
+    erfordereKassenrolle();
+    // Einreichungen enthalten nie offene Auslagen → für Kassenwart und Vorstand sichtbar
+    sendeEinreichungsPdf(ladeEinreichung((string)($_GET['id'] ?? ''), null)['id']);
+});
+
+/** Kassenwart: status = "veranlasst" (aus „eingereicht“) oder "eingereicht" (Rücknahme aus „veranlasst“) */
+route('POST', 'kasse/einreichung/status', function (): void {
     $ich = erfordereKassenrolle(true);
-    $e = eingabe();
-    $status = (string)($e['status'] ?? '');
-    $ids = idListe($e['ids'] ?? null);
-    $vorher = match ($status) {
-        'veranlasst'  => 'eingereicht',
-        'eingereicht' => 'veranlasst',
-        default       => throw new ApiFehler('Ungültiger Status.'),
-    };
-
-    $platzhalter = implode(', ', array_fill(0, count($ids), '?'));
-    $passend = (int)abfrage("SELECT COUNT(*) FROM va_auslagen WHERE status = ? AND id IN ({$platzhalter})",
-        [$vorher, ...$ids])->fetchColumn();
-    if ($passend !== count($ids)) {
-        throw new ApiFehler('Einige Auslagen wurden inzwischen geändert. Bitte neu laden.', 409);
+    $eingabe = eingabe();
+    $e = ladeEinreichung((string)($eingabe['id'] ?? ''), null);
+    $status = (string)($eingabe['status'] ?? '');
+    if ($status === 'veranlasst') {
+        pruefeEinreichungsStatus($e, ['eingereicht']);
+        abfrage("UPDATE va_auslagen SET status = 'veranlasst', veranlasst_am = UTC_TIMESTAMP(3), veranlasst_von = ?,
+            geaendert_am = UTC_TIMESTAMP(3) WHERE einreichung_id = ?", [$ich['id'], $e['id']]);
+    } elseif ($status === 'eingereicht') {
+        pruefeEinreichungsStatus($e, ['veranlasst']);
+        abfrage("UPDATE va_auslagen SET status = 'eingereicht', veranlasst_am = NULL, veranlasst_von = NULL,
+            geaendert_am = UTC_TIMESTAMP(3) WHERE einreichung_id = ?", [$e['id']]);
+    } else {
+        throw new ApiFehler('Ungültiger Status.');
     }
+    antworte();
+});
 
-    $anzahl = $status === 'veranlasst'
-        ? abfrage("UPDATE va_auslagen SET status = 'veranlasst', veranlasst_am = UTC_TIMESTAMP(3), veranlasst_von = ?,
-                geaendert_am = UTC_TIMESTAMP(3)
-            WHERE status = 'eingereicht' AND id IN ({$platzhalter})", [$ich['id'], ...$ids])->rowCount()
-        : abfrage("UPDATE va_auslagen SET status = 'eingereicht', veranlasst_am = NULL, veranlasst_von = NULL,
-                geaendert_am = UTC_TIMESTAMP(3)
-            WHERE status = 'veranlasst' AND id IN ({$platzhalter})", $ids)->rowCount();
-    antworte(['geaendert' => $anzahl]);
+/** Kassenwart oder Vorstand: Einreichung nicht genehmigen → zurück an das Mitglied (offen) */
+route('POST', 'kasse/einreichung/ablehnen', function (): void {
+    erfordereKassenrolle();
+    $e = ladeEinreichung((string)(eingabe()['id'] ?? ''), null);
+    if ($e['veranlasst_am'] !== null) {
+        throw new ApiFehler('Die Erstattung wurde bereits veranlasst. Nimm zuerst die Veranlassung zurück.', 409);
+    }
+    pruefeEinreichungsStatus($e, ['eingereicht']);
+    loeseEinreichungAuf($e['id']);
+    antworte();
 });

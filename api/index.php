@@ -33,6 +33,7 @@ require __DIR__ . '/routen/einrichtung.php';
 require __DIR__ . '/routen/anmeldung.php';
 require __DIR__ . '/routen/profil.php';
 require __DIR__ . '/routen/auslagen.php';
+require __DIR__ . '/routen/einreichungen.php';
 require __DIR__ . '/routen/kasse.php';
 require __DIR__ . '/routen/admin.php';
 

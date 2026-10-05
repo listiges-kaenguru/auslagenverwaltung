@@ -78,6 +78,34 @@ export function plural(anzahl, einzahl, mehrzahl) {
   return `${anzahl} ${anzahl === 1 ? einzahl : mehrzahl}`;
 }
 
+/**
+ * Eingereichte Auslagen nach Einreichung bündeln (Reihenfolge: neueste Einreichung zuerst).
+ * Alle Auslagen einer Einreichung haben denselben Status → g.status.
+ */
+export function gruppiereNachEinreichung(auslagen) {
+  const gruppen = new Map();
+  for (const a of auslagen) {
+    if (!a.einreichungId) continue;
+    if (!gruppen.has(a.einreichungId)) {
+      gruppen.set(a.einreichungId, {
+        id: a.einreichungId, eingereichtAm: a.eingereichtAm, uebernommen: a.uebernommen, hatPdf: a.hatPdf,
+        status: a.status, veranlasstAm: a.veranlasstAm, veranlasstVon: a.veranlasstVon, auslagen: []
+      });
+    }
+    gruppen.get(a.einreichungId).auslagen.push(a);
+  }
+  return [...gruppen.values()]
+    .map((g) => ({ ...g, auslagen: g.auslagen.sort((x, y) => x.datum.localeCompare(y.datum)) }))
+    .sort((x, y) => (y.eingereichtAm || '').localeCompare(x.eingereichtAm || ''));
+}
+
+/** Kopfzeile einer Einreichung: „Eingereicht am …“ bzw. Altbestand */
+export function einreichungsText(g) {
+  return g.uebernommen
+    ? 'Übernommen aus früherem Stand'
+    : `Eingereicht am ${formatiereZeitpunkt(g.eingereichtAm)}`;
+}
+
 /** Summe der Beträge einer Liste */
 export function summe(auslagen) {
   return auslagen.reduce((s, a) => s + (a.betrag || 0), 0);

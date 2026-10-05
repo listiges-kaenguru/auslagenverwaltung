@@ -78,7 +78,8 @@ function erfordereAdmin(): array
 
 /**
  * Kassenwart oder Vorstand: Einblick in eingereichte Auslagen aller Mitglieder.
- * $schreibend = true → nur Kassenwart (darf „Erstattung veranlasst“ setzen); der Vorstand liest nur.
+ * $schreibend = true → nur Kassenwart („Erstattung veranlasst“); der Vorstand darf sonst nur lesen
+ * und Einreichungen ablehnen (kasse.php).
  */
 function erfordereKassenrolle(bool $schreibend = false): array
 {

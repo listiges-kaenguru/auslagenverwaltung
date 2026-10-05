@@ -1,16 +1,19 @@
 // =============================================
 // EINREICHEN
 // Offene Auslagen auswählen → PDF (Übersicht + Belege) erstellen → Einreichung anlegen
-// (Status „Eingereicht“) → PDF anbieten. Bei „Abbrechen“ wird die Einreichung zurückgezogen.
+// (Status „Eingereicht“) → PDF zur Einreichung speichern → PDF anbieten.
+// Bei „Abbrechen“ oder wenn das PDF nicht gespeichert werden kann, wird die Einreichung
+// zurückgezogen – jede neue Einreichung hat damit genau ein gespeichertes PDF.
 // Die Einreichung ist ein eigener Datensatz, damit Kassenwart/Vorstand sie gebündelt sehen.
 // Der Status wird bewusst VOR dem Anbieten gespeichert: „PDF öffnen“ kann die App-Seite
 // verlassen (Firefox-App), und eine erst dann gestartete Anfrage ist nicht verlässlich.
 // =============================================
 import {
   escapeHtml, formatiereBetrag, formatiereDatum, plural, summe, zeigeToast, mitLadezustand,
-  registriereAktionen, meldeDatenAenderung, ladeDateiHerunter
+  registriereAktionen, meldeDatenAenderung, ladeDateiHerunter, formatiereGroesse
 } from './hilfen.js';
-import { reicheEin, zieheEinreichungZurueck } from './speicher.js';
+import { reicheEin, zieheEinreichungZurueck, speichereEinreichungsPdf } from './speicher.js';
+import { maxPdfBytes } from './sitzung.js';
 import { auslagenFuerAuswahl, erstelleEinreichung } from './export.js';
 import { hatStammdaten } from './stammdaten.js';
 
@@ -133,7 +136,18 @@ registriereAktionen({
       const ids = auswahl.map((a) => a.id);
       try {
         const { blob, dateiname, belegFehler } = await erstelleEinreichung(auswahl);
+        if (maxPdfBytes() && blob.size > maxPdfBytes()) {
+          throw new Error(`Das PDF ist zu groß für den Server (${formatiereGroesse(blob.size)}, höchstens `
+            + `${formatiereGroesse(maxPdfBytes())}). Bitte weniger Auslagen auf einmal einreichen.`);
+        }
         const einreichungId = await reicheEin(ids);
+        try {
+          await speichereEinreichungsPdf(einreichungId, blob);
+        } catch (err) {
+          await zieheEinreichungZurueck(einreichungId).catch(() => {});
+          meldeDatenAenderung();
+          throw new Error(`PDF konnte nicht gespeichert werden – die Auslagen bleiben offen. ${err.message}`);
+        }
         meldeDatenAenderung();
 
         if (!await ladeDateiHerunter(blob, dateiname)) {

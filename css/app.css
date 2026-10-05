@@ -825,8 +825,6 @@ textarea.formular-feld { resize: vertical; min-height: 76px; line-height: 1.45; 
 }
 .status-btn--offen[aria-pressed="true"]       { border-color: var(--offen-aktiv); background: var(--offen-aktiv); color: #ffffff; }
 .status-btn--eingereicht[aria-pressed="true"] { border-color: var(--amber);       background: var(--amber);       color: #ffffff; }
-.status-btn--veranlasst[aria-pressed="true"]  { border-color: var(--blau);        background: var(--blau);        color: #ffffff; }
-.status-btn:disabled:not([aria-pressed="true"]) { border-style: dashed; color: var(--text-2); cursor: not-allowed; }
 .status-btn--erstattet[aria-pressed="true"]   { border-color: var(--akzent);      background: var(--akzent);      color: #ffffff; }
 
 .beleg-anzeige {
@@ -1331,3 +1329,28 @@ body.ohne-anmeldung .haupt-inhalt { padding-bottom: calc(24px + var(--sicher-unt
 .kassenrolle-wahl { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; }
 .kassenrolle-wahl__label { flex-basis: 100%; font-size: 0.875rem; color: var(--text-2); font-weight: 600; }
 .kassenrolle-wahl .filter-chip { min-height: 36px; padding: 6px 12px; }
+
+/* Einreichungen als Gruppen (Übersicht des Mitglieds) */
+.liste-titel { font-size: 0.9375rem; font-weight: 700; color: var(--text-2); margin: 18px 0 8px; }
+.einreichungs-liste { display: flex; flex-direction: column; gap: 14px; }
+.einreichung-karte {
+  background: var(--flaeche-2);
+  border: 1px solid var(--rand);
+  border-left: 4px solid var(--rand-feld);
+  border-radius: 14px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.einreichung-karte--eingereicht { border-left-color: var(--amber); }
+.einreichung-karte--veranlasst  { border-left-color: var(--blau); }
+.einreichung-karte--erstattet   { border-left-color: var(--akzent); }
+.einreichung-karte__kopf { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; }
+.einreichung-karte__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.einreichung-karte__titel { font-weight: 700; overflow-wrap: anywhere; }
+.einreichung-karte__unter { font-size: 0.875rem; color: var(--text-2); }
+.auslagen-liste--gruppe { gap: 8px; }
+.auslagen-karte--in-gruppe { box-shadow: none; }
+.status-anzeige { margin-top: 8px; }
+.kasse-gruppe__rechts { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }

@@ -121,11 +121,12 @@ Einen Beleg musst du nicht sofort anhängen. Du kannst ihn später nachreichen
 Unter **Übersicht** siehst du oben die Gesamtsumme und darunter die Summen je Status.
 Mit den Knöpfen **Alle / Offen / Eingereicht / Veranlasst / Erstattet** filterst du die Liste.
 
-Tippe auf eine Auslage, um die **Details** zu öffnen. Dort kannst du:
+Die Liste ist zweigeteilt: Oben stehen deine **offenen** Auslagen einzeln, darunter deine
+**Einreichungen**. Jede Einreichung ist ein Kasten mit Datum, Anzahl, Summe, Status und den
+zugehörigen Auslagen.
 
-- **den Status ändern:** auf *Offen*, *Eingereicht* oder *Erstattet* tippen. Setze eine Auslage
-  auf **Erstattet**, sobald das Geld angekommen ist. *Erstattung veranlasst* setzt nur der
-  Kassenwart, der Knopf ist für dich deshalb ausgegraut.
+Tippe auf eine Auslage, um die **Details** zu öffnen. Bei einer **offenen** Auslage kannst du dort:
+
 - **den Beleg ansehen**, **⬇ herunterladen**, **ersetzen** (📷 Neues Foto, 📁 Andere Datei) oder
   **entfernen**. Fehlt der Beleg, kannst du ihn hier nachreichen.
 - mit **✏️ Angaben bearbeiten** Datum, Händler, Betrag und Verwendungszweck ändern.
@@ -133,12 +134,29 @@ Tippe auf eine Auslage, um die **Details** zu öffnen. Dort kannst du:
 
 Geschlossen wird das Fenster mit ✕, mit einem Tipp daneben oder mit der Zurück-Taste des Smartphones.
 
-**🔒 Nach „Erstattung veranlasst“ ist die Auslage gesperrt.** Damit nachvollziehbar bleibt, was
-erstattet wurde, kannst du sie dann nicht mehr löschen. Auch Angaben und Beleg kannst du nicht mehr
-ändern; den Beleg kannst du weiterhin ansehen und herunterladen. Den Status kannst du nur noch
-zwischen *Erstattung veranlasst* und *Erstattet* wechseln. Im Detail-Fenster steht, wann und von
-wem die Erstattung veranlasst wurde. Ist etwas falsch, wende dich an den Kassenwart. Er kann die
-Veranlassung zurücknehmen, solange du die Auslage noch nicht auf *Erstattet* gesetzt hast.
+**🔒 Eingereichte Auslagen gehören zu ihrer Einreichung.** Ab dem Einreichen lässt sich eine
+Auslage einzeln nicht mehr ändern oder löschen; den Beleg kannst du weiterhin ansehen und
+herunterladen. Der Status gilt immer für die ganze Einreichung. Die Knöpfe dafür stehen am Kasten
+der Einreichung in der Übersicht:
+
+Mit **📄 Einreichungs-PDF** öffnest du das beim Einreichen erstellte PDF erneut. (Kästen
+„Übernommen aus früherem Stand“ haben kein gespeichertes PDF.)
+
+| Status der Einreichung | Knöpfe |
+|---|---|
+| *Eingereicht* | **↩ Einreichung zurückziehen**: alle Auslagen werden wieder offen, du kannst sie ändern und neu einreichen. **● Als erstattet markieren**: das Geld ist angekommen. |
+| *Erstattung veranlasst* | **● Geld erhalten – als erstattet markieren** |
+| *Erstattet* | **↩ Doch noch nicht erstattet**: falls du dich vertippt hast |
+
+Nach *Erstattung veranlasst* kannst du die Einreichung nicht mehr zurückziehen. Am Kasten steht,
+wann und von wem die Erstattung veranlasst wurde. Ist etwas falsch, wende dich an den Kassenwart.
+Er kann die Veranlassung zurücknehmen, solange du nicht *Erstattet* gesetzt hast.
+
+Lehnen Kassenwart oder Vorstand eine Einreichung ab, stehen alle ihre Auslagen bei dir wieder auf
+**Offen**. Du kannst sie dann ändern und neu einreichen.
+
+Auslagen aus der Zeit vor den Einreichungen (frühere Versionen) sind je Status zu einem Kasten
+**Übernommen aus früherem Stand** zusammengefasst.
 
 Hast du die App auf mehreren Geräten geöffnet, holt sie beim Zurückwechseln automatisch den
 neuesten Stand vom Server.
@@ -156,8 +174,14 @@ So gibst du deine offenen Auslagen bei der Kasse ab:
 6. Das PDF so an die Kasse schicken, wie es in deinem Verein üblich ist, z. B. per E-Mail oder
    ausgedruckt.
 
-Die eingereichten Auslagen stehen danach auf **Eingereicht**. Tippst du im Fenster
-„Datei ist fertig“ auf **Abbrechen**, bleiben sie **Offen**.
+Die eingereichten Auslagen stehen danach auf **Eingereicht** und erscheinen in der Übersicht
+zusammen als eine Einreichung. Das PDF wird dabei mit der Einreichung gespeichert: Du, der
+Kassenwart und der Vorstand können es später jederzeit über **📄 Einreichungs-PDF** am Kasten der
+Einreichung wieder öffnen oder herunterladen. Tippst du im Fenster „Datei ist fertig“ auf
+**Abbrechen**, bleiben die Auslagen **Offen** und es wird nichts gespeichert.
+
+Ist das PDF zu groß für den Server, meldet die App das und reicht nichts ein. Reiche dann weniger
+Auslagen auf einmal ein.
 
 Kassenwart und Vorstand sehen deine Einreichung jetzt auch in der App, zusammen mit den Belegen.
 Das PDF schickst du trotzdem wie gewohnt an die Kasse.
@@ -296,15 +320,17 @@ Firefox. Dort speicherst du es über das Download-Symbol ⬇.
 
 **Kann der Administrator meine Auslagen sehen?**
 Nein. Administratoren verwalten nur die Konten. Deine offenen Auslagen sieht niemand außer dir.
-Sobald du einreichst, sehen **Kassenwart** und **Vorstand** sie, aber nur lesend. Der Kassenwart
-kann nur „Erstattung veranlasst“ setzen.
+Sobald du einreichst, sehen **Kassenwart** und **Vorstand** sie. Ändern können sie deine Auslagen
+nicht: Der Kassenwart setzt nur „Erstattung veranlasst“, und beide können eine Einreichung
+ablehnen. Dann bekommst du sie als offene Auslagen zurück.
 
 **Ich habe versehentlich eingereicht.**
-Öffne die Auslage in der Übersicht und setze den Status wieder auf **Offen**. Das geht, solange der
-Kassenwart die Erstattung noch nicht veranlasst hat.
+Tippe in der Übersicht am Kasten der Einreichung auf **↩ Einreichung zurückziehen**. Das geht,
+solange der Kassenwart die Erstattung noch nicht veranlasst hat.
 
 **Ich kann eine Auslage nicht mehr löschen oder ändern.**
-Der Kassenwart hat die Erstattung schon veranlasst (🔒, siehe [Abschnitt 5](#5-auslagen-ansehen-und-ändern)).
+Sie gehört zu einer Einreichung. Ziehe die Einreichung zurück, dann ist die Auslage wieder offen.
+Ist die Erstattung schon veranlasst, geht das nicht mehr (🔒, siehe [Abschnitt 5](#5-auslagen-ansehen-und-ändern)).
 
 ---
 
@@ -315,22 +341,31 @@ zusätzlich den Bereich **Kasse**. Dort stehen die eingereichten Auslagen **alle
 gebündelt nach Einreichung, mit Name, Datum der Einreichung und Summe. Offene Auslagen der
 Mitglieder siehst du nicht.
 
-- Mit **Zu erledigen / Veranlasst / Erstattet / Alle** filterst du die Liste. *Zu erledigen* sind
-  alle Auslagen mit Status *Eingereicht*.
+- Mit **Zu erledigen / Veranlasst / Erstattet / Alle** filterst du die Liste. Die Zahlen nennen
+  die Anzahl der Einreichungen. *Zu erledigen* sind alle Einreichungen mit Status *Eingereicht*.
+- **📄 Einreichungs-PDF** öffnet das PDF, das das Mitglied beim Einreichen erstellt hat, mit
+  Übersicht, Erstattungsangaben und allen Belegen.
 - **📎 Beleg ansehen** öffnet den Beleg einer Auslage zum Ansehen oder Herunterladen.
 - **🔄 Aktualisieren** holt den neuesten Stand vom Server.
+
+Alle Aktionen gelten für die **ganze Einreichung**, nie für einzelne Auslagen.
+
+**Kassenwart und Vorstand:**
+
+- **✖ Nicht genehmigen** gibt eine Einreichung an das Mitglied zurück. Alle ihre Auslagen stehen
+  dort wieder auf *Offen*; das Mitglied kann sie ändern und neu einreichen. Das geht nur, solange
+  die Einreichung auf *Eingereicht* steht. Sag dem Mitglied am besten Bescheid, warum.
 
 **Nur Kassenwart:**
 
 - Bei jeder Einreichung steht die **IBAN** des Mitglieds (aus seinen Stammdaten).
-- Hast du die Überweisung angestoßen, tippe auf **💸 Erstattung veranlasst**. Alle noch
-  eingereichten Auslagen dieser Einreichung stehen dann auf *Erstattung veranlasst*. Das Mitglied
-  kann sie ab jetzt nicht mehr ändern oder löschen und setzt sie selbst auf *Erstattet*, sobald das
-  Geld angekommen ist.
+- Hast du die Überweisung angestoßen, tippe auf **💸 Erstattung veranlasst**. Die Einreichung steht
+  dann auf *Erstattung veranlasst*. Das Mitglied kann sie ab jetzt nicht mehr zurückziehen und setzt
+  sie selbst auf *Erstattet*, sobald das Geld angekommen ist.
 - Mit **↩ Veranlassung zurücknehmen** machst du ein versehentliches Veranlassen rückgängig. Das
   geht nur, solange das Mitglied den Eingang noch nicht als *Erstattet* bestätigt hat.
 
-Der **Vorstand** kann alles ansehen, aber nichts ändern.
+Sonst kann der **Vorstand** alles ansehen, aber nichts ändern.
 
 Deine eigenen Auslagen verwaltest du wie jedes andere Mitglied unter **Übersicht**.
 

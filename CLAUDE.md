@@ -32,7 +32,8 @@ Admin-Bereich. Zielgruppe: kleine Vereine auf normalem Shared-Webhosting (FTP-Up
     Brute-Force-Schutz
   - `lib/konfig.php` – `api/config/config.php` lesen/schreiben, AES-GCM für TOTP-Geheimnisse
   - `lib/totp.php`, `lib/webauthn.php` – eigene Implementierungen ohne Fremdbibliothek
-- **Datenbank**: alle Tabellen mit Präfix `va_`; Belege als `LONGBLOB` in `va_belege`.
+- **Datenbank**: alle Tabellen mit Präfix `va_`; Belege als `LONGBLOB` in `va_belege`, Einreichungs-PDFs
+  in `va_einreichung_pdfs`. Tabellen mit Spalte `daten` in `BLOB_TABELLEN` eintragen (zeilenweise Kopie).
 
 ## Konventionen (unbedingt einhalten)
 
@@ -53,11 +54,17 @@ Admin-Bereich. Zielgruppe: kleine Vereine auf normalem Shared-Webhosting (FTP-Up
   immer mit `benutzer_id = ?` einschränken – Admins sehen **keine** fremden Auslagen.
 - **Rollen:** `rolle` (admin/user) ist rein technisch; `kassenrolle` (keine/kassenwart/vorstand) ist
   davon unabhängig. Einzige Ausnahme von `benutzer_id = ?` sind die Routen in `routen/kasse.php`:
-  fremde Auslagen nur mit Kassenrolle und nur `status <> 'offen'`; Vorstand nur lesend, Kassenwart
-  darf ausschließlich eingereicht ↔ veranlasst schalten. IBAN nur für den Kassenwart.
+  fremde Auslagen nur mit Kassenrolle und nur `status <> 'offen'`; Kassenwart darf nur
+  eingereicht ↔ veranlasst schalten, Kassenwart und Vorstand eine Einreichung ablehnen (→ offen).
+  IBAN nur für den Kassenwart.
+- **Einreichungen sind feste Gruppen** (`va_einreichungen`): jede nicht offene Auslage gehört zu
+  genau einer, alle Auslagen einer Gruppe haben denselben Status. Statuswechsel nur für die ganze
+  Gruppe (`routen/einreichungen.php`, `routen/kasse.php`); einzeln sind eingereichte Auslagen nicht
+  änderbar/löschbar (`pruefeEinzelnAenderbar()`). Zurückziehen/Ablehnen löst die Gruppe auf.
+  Jede neue Einreichung hat genau ein gespeichertes PDF (fällt beim Auflösen per CASCADE weg).
 - **Status:** offen → eingereicht → veranlasst → erstattet. „veranlasst“ setzt nur der Kassenwart,
-  „erstattet“ nur der Einreicher. Ist `veranlasst_am` gesetzt, ist die Auslage gesperrt (nicht
-  löschbar, Angaben/Beleg unveränderlich; Konto nur sperrbar) – serverseitig in `auslagen.php`.
+  „erstattet“ nur der Einreicher. Ist `veranlasst_am` gesetzt, kann die Gruppe nicht mehr aufgelöst
+  werden; Konten mit solchen Auslagen sind nur sperrbar.
 - **Sicherheitsinvarianten nicht aufweichen:** CSRF-Header + Origin-Prüfung, `sitzung_gen`
   (Passwortwechsel/Sperre/MFA-Reset beendet andere Sitzungen), letzter aktiver Admin nicht
   entfernbar, TOTP-Schlüssel nie in der DB.
@@ -65,7 +72,8 @@ Admin-Bereich. Zielgruppe: kleine Vereine auf normalem Shared-Webhosting (FTP-Up
 
 ## Checkliste bei Änderungen
 
-1. **Frontend geändert?** → `VERSION` in `sw.js` erhöhen (SemVer, aktuell 3.1.x).
+1. **Frontend geändert?** → `VERSION` in `sw.js` erhöhen (reine SemVer ohne „v“, aktuell 3.1.x).
+   In Doku, CHANGELOG, Tags, Releases und PR-Titeln steht die Version mit „v“ (z. B. v3.1.1).
    Neue Dateien in `APP_SHELL` eintragen, sonst fehlen sie offline.
 2. **Schema geändert?** → `SCHEMA_VERSION` in `api/lib/db.php` erhöhen und in `migriere()` einen
    Block `if ($version < N) { … }` ergänzen. Neue Tabellen auch in `TABELLEN` (Reihenfolge

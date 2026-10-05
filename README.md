@@ -14,7 +14,8 @@ Läuft auf normalem Shared-Webhosting mit PHP und MySQL – ohne Build-Schritt, 
 - Benutzerkonten mit Login/Logout, Passwort ändern, Rollen **Admin** und **Benutzer**
 - **Kassenrollen** zusätzlich zur Rolle: **Kassenwart** sieht eingereichte Auslagen aller Mitglieder
   (mit Belegen und IBAN) und setzt „Erstattung veranlasst“; **Vorstand** sieht sie nur lesend.
-  Ab „Erstattung veranlasst“ ist eine Auslage gesperrt (nicht mehr lösch- oder änderbar)
+  Beide können eine Einreichung ablehnen. Eingereichte Auslagen bilden eine feste Gruppe: Status
+  nur gemeinsam, einzeln nicht mehr lösch- oder änderbar
 - Zwei-Faktor-Anmeldung per **TOTP** (Authenticator-App) inkl. 10 Wiederherstellungscodes
 - Anmeldung per **Passkey** (Fingerabdruck, Face-ID, Geräte-PIN) – ersetzt Passwort + TOTP
 - **Stammdaten im Profil** (Name, IBAN, Ort) → werden ins Einreichungs-PDF übernommen
@@ -101,14 +102,16 @@ Nach einem Wechsel müssen sich alle neu anmelden.
 - CSRF-Schutz über eigenen Anfrage-Header und Origin-Prüfung
 - Jeder Benutzer sieht ausschließlich seine eigenen Auslagen; Admins verwalten Konten, sehen aber
   keine fremden Auslagen. Einzige Ausnahme: Kassenwart und Vorstand sehen fremde Auslagen ab Status
-  „eingereicht“ (offene nie); ändern darf nur der Kassenwart, und nur den Status
-  „Erstattung veranlasst“. Die IBAN der Mitglieder sieht nur der Kassenwart
-- Auslagen mit veranlasster Erstattung lassen sich nicht mehr löschen oder ändern; Konten mit solchen
-  Auslagen kann der Admin nur sperren, nicht löschen
+  „eingereicht“ (offene nie). Inhalte ändern können sie nicht: Der Kassenwart setzt nur
+  „Erstattung veranlasst“, Kassenwart und Vorstand können eine Einreichung als Ganzes ablehnen.
+  Die IBAN der Mitglieder sieht nur der Kassenwart
+- Eingereichte Auslagen sind einzeln nicht mehr änderbar oder löschbar; nach veranlasster Erstattung
+  lässt sich auch die Einreichung nicht mehr zurückziehen. Konten mit solchen Auslagen kann der Admin
+  nur sperren, nicht löschen
 - Der letzte aktive Admin kann nicht gesperrt, herabgestuft oder gelöscht werden
 
 **Datensicherung**: regelmäßig die Datenbank sichern (z. B. `mysqldump` oder Backup-Funktion des
-Hosters) – sie enthält auch alle Belege. Zusätzlich kann jeder Benutzer unter
+Hosters) – sie enthält auch alle Belege und Einreichungs-PDFs. Zusätzlich kann jeder Benutzer unter
 Export → Datensicherung ein ZIP seiner eigenen Daten speichern.
 
 ## Umstieg von der Einzelplatz-Version

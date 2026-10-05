@@ -217,11 +217,11 @@ function versionHtml() {
   const { laufend, neu, ermittelt, updateBereit } = versionsInfo();
   return `
     <h3 class="abschnitt__titel" id="titelVersion">App-Version</h3>
-    <p class="abschnitt__text">Laufende Version: <strong>${escapeHtml(laufend || (ermittelt ? 'unbekannt' : 'wird ermittelt …'))}</strong></p>
+    <p class="abschnitt__text">Laufende Version: <strong>${escapeHtml(laufend ? `v${laufend}` : (ermittelt ? 'unbekannt' : 'wird ermittelt …'))}</strong></p>
     ${updateBereit ? `
       <div class="codes-kasten" role="status">
         <p class="codes-kasten__titel">Aktualisierung verfügbar</p>
-        <p class="abschnitt__text">Neue Version: <strong>${escapeHtml(neu || 'wird ermittelt …')}</strong> – deine Daten bleiben erhalten.</p>
+        <p class="abschnitt__text">Neue Version: <strong>${escapeHtml(neu ? `v${neu}` : 'wird ermittelt …')}</strong> – deine Daten bleiben erhalten.</p>
         <button type="button" class="btn btn-primaer btn-klein" data-aktion="update-installieren">🔄 Jetzt aktualisieren</button>
       </div>`
       : ermittelt ? '<p class="klein-hinweis klein-hinweis--links">Die App ist auf dem neuesten Stand.</p>' : ''}`;

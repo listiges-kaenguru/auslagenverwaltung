@@ -1,12 +1,12 @@
 // =============================================
 // DETAIL-MODAL (Bottom Sheet)
-// - Status ändern, Beleg nachreichen/ersetzen, Auslage bearbeiten oder löschen
-// - Nach „Erstattung veranlasst“ (Kassenwart) ist die Auslage gesperrt: nur noch der Wechsel
-//   zwischen „veranlasst“ und „erstattet“, keine Änderungen, kein Löschen (Server prüft ebenso)
+// - Offene Auslagen: Beleg nachreichen/ersetzen, bearbeiten oder löschen
+// - Eingereichte Auslagen gehören zu ihrer Einreichung: hier nur ansehen; Status und Zurückziehen
+//   gelten für die ganze Gruppe und liegen in der Übersicht (Server prüft ebenso)
 // - Zurück-Taste (Android) schließt das Modal statt die App
 // =============================================
 import {
-  STATUS_LISTE, statusInfo, escapeHtml, formatiereDatum, formatiereBetrag, betragAlsText,
+  statusInfo, einreichungsText, escapeHtml, formatiereDatum, formatiereBetrag, betragAlsText,
   parseBetrag, formatiereGroesse, formatiereZeitpunkt, heuteISO, sichererDateiname, dateiEndung,
   ladeDateiHerunter, zeigeToast, registriereAktionen, meldeDatenAenderung
 } from './hilfen.js';
@@ -133,7 +133,7 @@ async function rendereInhalt() {
   const auslage = findeAuslage(aktuelleId);
   if (!auslage) { schliesseDetail(); return; }
 
-  if (modus === 'bearbeiten' && auslage.gesperrt) modus = 'anzeige';
+  if (modus === 'bearbeiten' && auslage.einreichungId) modus = 'anzeige';
   if (modus === 'bearbeiten') {
     gibBelegFrei();
     inhalt.innerHTML = bearbeitenHtml(auslage);
@@ -167,28 +167,16 @@ function kopfHtml(titel, untertitel) {
     </div>`;
 }
 
-/** Welche Status darf das Mitglied selbst wählen? (Regeln wie im Server) */
-function statusWaehlbar(auslage, status) {
-  if (status === auslage.status) return true;
-  if (auslage.gesperrt) return status === 'veranlasst' || status === 'erstattet';
-  return status !== 'veranlasst';
-}
-
 function anzeigeHtml(auslage, beleg) {
-  const statusKnoepfe = STATUS_LISTE.map((s) => {
-    const info = statusInfo(s);
-    return `<button type="button" class="status-btn status-btn--${s}" data-aktion="detail-status"
-      data-status="${s}" aria-pressed="${auslage.status === s}"
-      ${statusWaehlbar(auslage, s) ? '' : 'disabled'}>${info.icon} ${info.label}</button>`;
-  }).join('');
-
-  const sperrHinweis = auslage.gesperrt
-    ? `<p class="klein-hinweis klein-hinweis--links sperr-hinweis">🔒 Erstattung veranlasst
-        ${auslage.veranlasstAm ? `am ${formatiereZeitpunkt(auslage.veranlasstAm)}` : ''}
-        ${auslage.veranlasstVon ? `von ${escapeHtml(auslage.veranlasstVon)}` : ''}.
-        Die Auslage kann nicht mehr geändert oder gelöscht werden.
-        ${auslage.status === 'veranlasst' ? 'Ist das Geld angekommen, setze sie auf „Erstattet“.' : ''}</p>`
-    : `<p class="klein-hinweis klein-hinweis--links">„Erstattung veranlasst“ setzt der Kassenwart.</p>`;
+  const info = statusInfo(auslage.status);
+  const statusHinweis = auslage.einreichungId
+    ? `<p class="klein-hinweis klein-hinweis--links sperr-hinweis">🔒 Teil der Einreichung
+        „${escapeHtml(einreichungsText(auslage))}“.
+        ${auslage.veranlasstAm ? `Erstattung veranlasst am ${formatiereZeitpunkt(auslage.veranlasstAm)}${auslage.veranlasstVon
+          ? ` von ${escapeHtml(auslage.veranlasstVon)}` : ''}.` : ''}
+        Einzeln lässt sich die Auslage nicht ändern oder löschen. Den Status änderst du für die ganze
+        Einreichung in der Übersicht${auslage.veranlasstAm ? '' : ' – dort kannst du sie auch zurückziehen'}.</p>`
+    : `<p class="klein-hinweis klein-hinweis--links">Zum Einreichen in der Übersicht „📨 Einreichen …“ wählen.</p>`;
 
   return `
     ${kopfHtml(auslage.haendler, formatiereDatum(auslage.datum))}
@@ -205,9 +193,9 @@ function anzeigeHtml(auslage, beleg) {
     </div>` : ''}
 
     <div class="info-kasten">
-      <div class="info-kasten__label" id="statusLabel">Status</div>
-      <div class="status-leiste" role="group" aria-labelledby="statusLabel">${statusKnoepfe}</div>
-      ${sperrHinweis}
+      <div class="info-kasten__label">Status</div>
+      <div class="status-anzeige"><span class="badge badge--${info.key}">${info.icon} ${info.label}</span></div>
+      ${statusHinweis}
     </div>
 
     <div class="modal-abschnitt">
@@ -215,7 +203,7 @@ function anzeigeHtml(auslage, beleg) {
       ${belegHtml(auslage, beleg)}
     </div>
 
-    ${auslage.gesperrt ? '' : `
+    ${auslage.einreichungId ? '' : `
     <div class="modal-aktionen">
       <button type="button" class="btn btn-sekundaer" data-aktion="detail-bearbeiten">✏️ Angaben bearbeiten</button>
       <button type="button" class="btn btn-gefahr" data-aktion="detail-loeschen">🗑 Auslage löschen</button>
@@ -224,7 +212,7 @@ function anzeigeHtml(auslage, beleg) {
 }
 
 function belegHtml(auslage, beleg) {
-  if (auslage.gesperrt) return belegNurAnsehenHtml(auslage, beleg);
+  if (auslage.einreichungId) return belegNurAnsehenHtml(auslage, beleg);
   if (!beleg) {
     return `
       <div class="beleg-fehlt">
@@ -255,7 +243,7 @@ function belegHtml(auslage, beleg) {
     ${belegKnoepfeHtml('detail', { ersetzen: true })}`;
 }
 
-/** Gesperrte Auslage: Beleg nur ansehen und herunterladen */
+/** Eingereichte Auslage: Beleg nur ansehen und herunterladen */
 function belegNurAnsehenHtml(auslage, beleg) {
   if (!beleg) {
     return `
@@ -348,24 +336,6 @@ registriereAktionen({
   'detail': (btn) => oeffneDetail(btn.dataset.id),
 
   'detail-schliessen': () => schliesseDetail(),
-
-  'detail-status': async (btn) => {
-    const neuerStatus = btn.dataset.status;
-    try {
-      await aktualisiereAuslage(aktuelleId, { status: neuerStatus });
-    } catch (err) {
-      zeigeToast(`⚠ ${err.message}`, 4000);
-      return;
-    }
-    // Nur die Knöpfe aktualisieren – kein Neuladen des Belegs nötig
-    const auslage = findeAuslage(aktuelleId);
-    for (const b of inhalt.querySelectorAll('[data-aktion="detail-status"]')) {
-      b.setAttribute('aria-pressed', String(b.dataset.status === neuerStatus));
-      b.disabled = !!auslage && !statusWaehlbar(auslage, b.dataset.status);
-    }
-    zeigeToast(`Status: ${statusInfo(neuerStatus).label}`);
-    meldeDatenAenderung();
-  },
 
   'beleg:detail': async (input) => {
     const datei = input.files?.[0];

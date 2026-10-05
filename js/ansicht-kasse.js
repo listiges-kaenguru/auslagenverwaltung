@@ -1,13 +1,15 @@
 // =============================================
 // ANSICHT 5: KASSE (nur Kassenwart und Vorstand)
-// Eingereichte Auslagen aller Mitglieder, gebündelt nach Einreichung (bzw. einzeln
-// eingereichte Auslagen je Mitglied). Offene Auslagen sind hier nie sichtbar.
+// Eingereichte Auslagen aller Mitglieder, gebündelt nach Einreichung. Offene Auslagen sind hier
+// nie sichtbar. Aktionen gelten immer für die ganze Einreichung:
 // - Kassenwart: „Erstattung veranlasst“ setzen oder zurücknehmen, IBAN sichtbar
-// - Vorstand: nur lesen
+// - Kassenwart und Vorstand: „Nicht genehmigen“ → Auslagen wieder offen beim Mitglied
+// - Vorstand: sonst nur lesen
 // Die Daten kommen nicht aus speicher.js (dort nur eigene Auslagen), sondern direkt vom Server.
 // =============================================
 import {
   statusInfo, escapeHtml, formatiereDatum, formatiereBetrag, formatiereZeitpunkt, plural, summe,
+  gruppiereNachEinreichung, einreichungsText,
   sichererDateiname, dateiEndung, ladeDateiHerunter, zeigeToast, mitLadezustand, registriereAktionen,
   meldeDatenAenderung
 } from './hilfen.js';
@@ -67,7 +69,8 @@ export function rendereKasse(container) {
 
   const gefiltert = filter === 'alle' ? auslagen : auslagen.filter((a) => a.status === filter);
   const gruppen = gruppiere(gefiltert);
-  const anzahl = (s) => (s === 'alle' ? auslagen.length : auslagen.filter((a) => a.status === s).length);
+  // Filter zählen Einreichungen, nicht Einzelposten
+  const anzahl = (s) => gruppiere(s === 'alle' ? auslagen : auslagen.filter((a) => a.status === s)).length;
 
   container.innerHTML = `
     <div class="ansicht">
@@ -76,8 +79,8 @@ export function rendereKasse(container) {
         <button type="button" class="btn btn-sekundaer btn-klein kasse-kopf__knopf" data-aktion="kasse-neu-laden">🔄 Aktualisieren</button>
       </div>
       <p class="abschnitt__text">${istKassenwart()
-        ? 'Eingereichte Auslagen aller Mitglieder. Hast du die Überweisung angestoßen, markiere sie mit „Erstattung veranlasst“ – das Mitglied bestätigt den Eingang selbst.'
-        : 'Eingereichte Auslagen aller Mitglieder (nur lesend).'}</p>
+        ? 'Eingereichte Auslagen aller Mitglieder. Hast du die Überweisung angestoßen, markiere die Einreichung mit „Erstattung veranlasst“ – das Mitglied bestätigt den Eingang selbst.'
+        : 'Eingereichte Auslagen aller Mitglieder. Eine Einreichung, die nicht genehmigt wird, geht mit „Nicht genehmigen“ an das Mitglied zurück.'}</p>
       ${ladeFehler ? `<p class="klein-hinweis klein-hinweis--links">⚠ ${escapeHtml(ladeFehler)}</p>` : ''}
 
       <div class="zusammenfassung-karte">
@@ -104,61 +107,52 @@ export function rendereKasse(container) {
     </div>`;
 }
 
-/** Nach Einreichung bündeln; ohne Einreichung (Status von Hand gesetzt) je Mitglied */
+/** Nach Einreichung bündeln; jede Gruppe kennt ihr Mitglied */
 function gruppiere(liste) {
-  const gruppen = new Map();
-  for (const a of liste) {
-    const schluessel = a.einreichungId || `einzeln-${a.mitglied.id}`;
-    if (!gruppen.has(schluessel)) {
-      gruppen.set(schluessel, { schluessel, mitglied: a.mitglied, eingereichtAm: a.eingereichtAm, auslagen: [] });
-    }
-    gruppen.get(schluessel).auslagen.push(a);
-  }
-  return [...gruppen.values()];
+  return gruppiereNachEinreichung(liste).map((g) => ({ ...g, mitglied: g.auslagen[0].mitglied }));
 }
 
 function gruppeHtml(g) {
-  const offen = g.auslagen.filter((a) => a.status === 'eingereicht');
-  const veranlasst = g.auslagen.filter((a) => a.status === 'veranlasst');
-  const ids = (liste) => escapeHtml(liste.map((a) => a.id).join(','));
-
-  const knoepfe = istKassenwart() ? [
-    offen.length ? `<button type="button" class="btn btn-primaer btn-klein" data-aktion="kasse-veranlassen"
-      data-ids="${ids(offen)}">💸 Erstattung veranlasst (${formatiereBetrag(summe(offen))})</button>` : '',
-    veranlasst.length ? `<button type="button" class="btn btn-sekundaer btn-klein" data-aktion="kasse-zuruecknehmen"
-      data-ids="${ids(veranlasst)}">↩ Veranlassung zurücknehmen</button>` : ''
-  ].join('') : '';
+  const id = escapeHtml(g.id);
+  const ablehnen = `<button type="button" class="btn btn-gefahr btn-klein" data-aktion="kasse-ablehnen" data-id="${id}">✖ Nicht genehmigen</button>`;
+  const knoepfe = g.status === 'eingereicht'
+    ? (istKassenwart() ? `<button type="button" class="btn btn-primaer btn-klein" data-aktion="kasse-veranlassen" data-id="${id}">
+        💸 Erstattung veranlasst (${formatiereBetrag(summe(g.auslagen))})</button>` : '') + ablehnen
+    : (g.status === 'veranlasst' && istKassenwart()
+      ? `<button type="button" class="btn btn-sekundaer btn-klein" data-aktion="kasse-zuruecknehmen" data-id="${id}">↩ Veranlassung zurücknehmen</button>`
+      : '');
+  const info = statusInfo(g.status);
+  const pdf = g.hatPdf
+    ? `<button type="button" class="btn btn-sekundaer btn-klein" data-aktion="kasse-einreichung-pdf" data-id="${id}">📄 Einreichungs-PDF</button>`
+    : '';
 
   return `
     <li class="kasse-gruppe">
       <div class="kasse-gruppe__kopf">
         <div class="kasse-gruppe__text">
           <span class="kasse-gruppe__name">${escapeHtml(g.mitglied.name)}</span>
-          <span class="kasse-gruppe__unter">${g.eingereichtAm
-            ? `Eingereicht am ${formatiereZeitpunkt(g.eingereichtAm)}`
-            : 'Ohne Einreichung (Status von Hand gesetzt)'}</span>
+          <span class="kasse-gruppe__unter">${escapeHtml(einreichungsText(g))} · ${plural(g.auslagen.length, 'Auslage', 'Auslagen')}</span>
           ${g.mitglied.iban ? `<span class="kasse-gruppe__unter">IBAN ${escapeHtml(formatiereIban(g.mitglied.iban))}</span>` : ''}
+          ${g.veranlasstAm ? `<span class="kasse-gruppe__unter">Veranlasst ${formatiereZeitpunkt(g.veranlasstAm)}${g.veranlasstVon
+            ? ` von ${escapeHtml(g.veranlasstVon)}` : ''}</span>` : ''}
         </div>
-        <span class="kasse-gruppe__summe">${formatiereBetrag(summe(g.auslagen))}</span>
+        <div class="kasse-gruppe__rechts">
+          <span class="kasse-gruppe__summe">${formatiereBetrag(summe(g.auslagen))}</span>
+          <span class="badge badge--${info.key}">${info.icon} ${info.label}</span>
+        </div>
       </div>
       <ul class="kasse-posten">${g.auslagen.map(postenHtml).join('')}</ul>
-      ${knoepfe ? `<div class="knopf-reihe knopf-reihe--umbruch">${knoepfe}</div>` : ''}
+      ${knoepfe || pdf ? `<div class="knopf-reihe knopf-reihe--umbruch">${pdf}${knoepfe}</div>` : ''}
     </li>`;
 }
 
 function postenHtml(a) {
-  const info = statusInfo(a.status);
-  const veranlasst = a.veranlasstAm
-    ? `<span class="kasse-posten__info">Veranlasst ${formatiereZeitpunkt(a.veranlasstAm)}${a.veranlasstVon ? ` von ${escapeHtml(a.veranlasstVon)}` : ''}</span>`
-    : '';
   return `
     <li class="kasse-posten__zeile">
       <div class="kasse-posten__text">
         <span class="kasse-posten__haendler">${escapeHtml(a.haendler)}</span>
         <span class="kasse-posten__info">${formatiereDatum(a.datum)}${a.notiz ? ` · ${escapeHtml(a.notiz)}` : ''}</span>
-        ${veranlasst}
         <span class="kasse-posten__merkmale">
-          <span class="badge badge--${info.key}">${info.icon} ${info.label}</span>
           ${a.hatFoto
             ? `<button type="button" class="link-knopf" data-aktion="kasse-beleg" data-id="${escapeHtml(a.id)}">📎 Beleg ansehen</button>`
             : '<span class="auswahl-zeile__warnung">⚠ Kein Beleg</span>'}
@@ -168,13 +162,12 @@ function postenHtml(a) {
     </li>`;
 }
 
-/** Status setzen; danach Kassen- und eigene Daten neu laden (der Kassenwart kann selbst Einreicher sein) */
-function setzeKassenStatus(btn, status, meldung) {
-  const ids = btn.dataset.ids.split(',').filter(Boolean);
+/** Aktion für eine ganze Einreichung; danach Kassen- und eigene Daten neu laden (Kassenwart kann selbst Einreicher sein) */
+function kassenAktion(btn, route, daten, meldung) {
   return mitLadezustand(btn, async () => {
     try {
-      await apiPost('kasse/status', { ids, status });
-      zeigeToast(meldung(ids.length));
+      await apiPost(route, daten);
+      zeigeToast(meldung, 4000);
     } catch (err) {
       zeigeToast(`⚠ ${err.message}`, 5000);
     }
@@ -192,13 +185,29 @@ registriereAktionen({
 
   'kasse-neu-laden': (btn) => mitLadezustand(btn, ladeDaten),
 
-  'kasse-veranlassen': (btn) => setzeKassenStatus(btn, 'veranlasst',
-    (n) => `✓ ${plural(n, 'Auslage', 'Auslagen')}: Erstattung veranlasst`),
+  'kasse-veranlassen': (btn) => kassenAktion(btn, 'kasse/einreichung/status',
+    { id: btn.dataset.id, status: 'veranlasst' }, '✓ Erstattung veranlasst'),
 
   'kasse-zuruecknehmen': (btn) => {
-    if (!window.confirm('Veranlassung wirklich zurücknehmen?\n\nDie Auslagen stehen danach wieder auf „Eingereicht“ und können vom Mitglied wieder geändert oder gelöscht werden.')) return;
-    return setzeKassenStatus(btn, 'eingereicht', () => 'Veranlassung zurückgenommen');
+    if (!window.confirm('Veranlassung wirklich zurücknehmen?\n\nDie Einreichung steht danach wieder auf „Eingereicht“. Das Mitglied kann sie dann wieder zurückziehen.')) return;
+    return kassenAktion(btn, 'kasse/einreichung/status', { id: btn.dataset.id, status: 'eingereicht' }, 'Veranlassung zurückgenommen');
   },
+
+  'kasse-ablehnen': (btn) => {
+    if (!window.confirm('Einreichung nicht genehmigen?\n\nAlle Auslagen dieser Einreichung gehen an das Mitglied zurück und stehen dort wieder auf „Offen“. Es kann sie ändern und neu einreichen. Sag dem Mitglied am besten Bescheid, warum.')) return;
+    return kassenAktion(btn, 'kasse/einreichung/ablehnen', { id: btn.dataset.id }, 'Einreichung zurückgegeben – die Auslagen sind wieder offen');
+  },
+
+  'kasse-einreichung-pdf': (btn) => mitLadezustand(btn, async () => {
+    const a = auslagen?.find((x) => x.einreichungId === btn.dataset.id);
+    try {
+      const blob = await api(mitId('kasse/einreichung/pdf', btn.dataset.id), { blob: true });
+      const name = sichererDateiname(`Einreichung_${a?.mitglied.name || ''}_${(a?.eingereichtAm || '').slice(0, 10)}`);
+      await ladeDateiHerunter(blob, `${name}.pdf`);
+    } catch (err) {
+      zeigeToast(`⚠ ${err.message}`, 4000);
+    }
+  }),
 
   'kasse-beleg': (btn) => mitLadezustand(btn, async () => {
     const a = auslagen?.find((x) => x.id === btn.dataset.id);
