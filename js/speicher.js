@@ -64,12 +64,30 @@ export async function aktualisiereAuslage(id, aenderungen) {
   return ersetzeImCache(auslage);
 }
 
-/** Status mehrerer Auslagen in einem Schritt setzen */
+/** Status mehrerer Auslagen in einem Schritt setzen („offen“ löst sie aus ihrer Einreichung) */
 export async function setzeStatus(ids, status) {
   await apiPost('auslagen/status', { ids, status });
   const ziel = new Set(ids);
   const jetzt = new Date().toISOString();
-  cache = cache.map((a) => (ziel.has(a.id) ? { ...a, status, geaendertAm: jetzt } : a));
+  cache = cache.map((a) => (ziel.has(a.id)
+    ? { ...a, status, geaendertAm: jetzt, ...(status === 'offen' ? { einreichungId: null } : {}) }
+    : a));
+}
+
+/** Offene Auslagen als Einreichung bündeln (→ „eingereicht“); liefert die Einreichungs-ID */
+export async function reicheEin(ids) {
+  const { einreichung, auslagen } = await apiPost('einreichungen', { ids });
+  for (const a of auslagen) ersetzeImCache(a);
+  return einreichung.id;
+}
+
+/** Einreichung zurückziehen – die Auslagen sind danach wieder offen */
+export async function zieheEinreichungZurueck(einreichungId) {
+  await apiDelete(mitId('einreichungen', einreichungId));
+  const jetzt = new Date().toISOString();
+  cache = cache.map((a) => (a.einreichungId === einreichungId
+    ? { ...a, status: 'offen', einreichungId: null, geaendertAm: jetzt }
+    : a));
 }
 
 /** Auslage samt Beleg löschen */
@@ -114,6 +132,7 @@ export async function holeBeleg(id) {
 export async function importiereAuslagen(eintraege, fortschritt = () => {}) {
   let importiert = 0;
   let uebersprungen = 0;
+  let zurueckgestuft = 0; // „Erstattung veranlasst“ → „eingereicht“
   const fehler = [];
   for (const [i, { auslage, beleg }] of eintraege.entries()) {
     fortschritt(i + 1, eintraege.length);
@@ -121,15 +140,18 @@ export async function importiereAuslagen(eintraege, fortschritt = () => {}) {
       await legeAuslageAn({
         id: String(auslage.id), datum: auslage.datum, haendler: auslage.haendler,
         betrag: Number(auslage.betrag), notiz: auslage.notiz || '',
-        status: auslage.status, erstelltAm: auslage.erstelltAm
+        // „Erstattung veranlasst“ kann nur der Kassenwart setzen → als eingereicht übernehmen
+        status: auslage.status === 'veranlasst' ? 'eingereicht' : auslage.status,
+        erstelltAm: auslage.erstelltAm
       }, beleg);
       importiert++;
+      if (auslage.status === 'veranlasst') zurueckgestuft++;
     } catch (err) {
       if (err instanceof ApiFehler && err.status === 409) uebersprungen++;
       else fehler.push(`${auslage.haendler || auslage.id}: ${err.message}`);
     }
   }
-  return { importiert, uebersprungen, fehler };
+  return { importiert, uebersprungen, zurueckgestuft, fehler };
 }
 
 // ---------------------------------------------

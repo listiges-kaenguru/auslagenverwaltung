@@ -19,7 +19,7 @@ export function rendereUebersicht(container) {
 
   const filterOptionen = [
     { id: 'alle', label: 'Alle', anzahl: alle.length },
-    ...STATUS_LISTE.map((s) => ({ id: s, label: statusInfo(s).label, anzahl: nachStatus[s].length }))
+    ...STATUS_LISTE.map((s) => ({ id: s, label: statusInfo(s).kurz, anzahl: nachStatus[s].length }))
   ];
 
   const filterHtml = filterOptionen.map((f) => `
@@ -33,7 +33,7 @@ export function rendereUebersicht(container) {
     ? `<div class="zusammenfassung-karte__aufteilung">
         ${STATUS_LISTE.map((s) => `
           <div>
-            <div class="aufteilung__label">${statusInfo(s).label}</div>
+            <div class="aufteilung__label">${statusInfo(s).kurz}</div>
             <div class="aufteilung__wert">${formatiereBetrag(summe(nachStatus[s]))}</div>
           </div>`).join('')}
       </div>`

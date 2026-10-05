@@ -4,8 +4,8 @@
 
 | | |
 |---|---|
-| App-Version (`sw.js` → `VERSION`) | **3.0.6** |
-| Schema-Version (`api/lib/db.php` → `SCHEMA_VERSION`) | **1** |
+| App-Version (`sw.js` → `VERSION`) | **3.1.0** |
+| Schema-Version (`api/lib/db.php` → `SCHEMA_VERSION`) | **2** |
 | Tests | keine automatisierten Tests |
 
 Der Funktionsumfang ist vollständig umgesetzt (siehe unten). Es gibt keine bekannten offenen Fehler.
@@ -14,8 +14,10 @@ Der Funktionsumfang ist vollständig umgesetzt (siehe unten). Es gibt keine beka
 
 **Auslagen**
 - Erfassen mit Datum, Händler, Betrag, Notiz, Beleg (Foto wird verkleinert, oder PDF, max. 15 MB)
-- Übersicht mit Status offen / eingereicht / erstattet, Detail-Bottom-Sheet zum Bearbeiten
-- Einreichen: offene Auslagen einzeln auswählen → PDF (Übersicht + Stammdaten + Belege)
+- Übersicht mit Status offen / eingereicht / Erstattung veranlasst / erstattet, Detail-Bottom-Sheet
+  zum Bearbeiten; ab „Erstattung veranlasst“ gesperrt (nicht lösch- oder änderbar)
+- Einreichen: offene Auslagen einzeln auswählen → PDF (Übersicht + Stammdaten + Belege);
+  jede Einreichung wird als Datensatz gespeichert
 - Export (CSV/PDF/ZIP), Datensicherung als ZIP, Import von Backups der früheren Einzelplatz-Version
 - PWA: installierbar, App-Shell offline, Update-Hinweis, Versionsanzeige im Profil;
   Hell/Dunkel/System-Farbschema
@@ -25,7 +27,9 @@ Der Funktionsumfang ist vollständig umgesetzt (siehe unten). Es gibt keine beka
 - Login/Logout, Pflicht-Passwortwechsel beim ersten Login, Passwort ändern
 - TOTP-2FA mit 10 Wiederherstellungscodes; Passkeys (WebAuthn) als Alternative
 - Stammdaten (Name, IBAN, Ort) im Profil, gehen ins Einreichungs-PDF
-- Admin: Benutzer anlegen/sperren/löschen, Rolle ändern, Passwort und MFA zurücksetzen,
+- Kassenrollen: **Kassenwart** sieht eingereichte Auslagen aller Mitglieder (Ansicht „Kasse“, mit
+  Belegen und IBAN) und setzt „Erstattung veranlasst“; **Vorstand** sieht dasselbe nur lesend
+- Admin: Benutzer anlegen/sperren/löschen, Rolle und Kassenrolle ändern, Passwort und MFA zurücksetzen,
   Datenbank-Verbindung wechseln (mit optionaler Datenübernahme)
 - Sicherheit: CSRF (Header + Origin), Brute-Force-Sperre, Sitzungs-Generationen, strikte CSP
 
@@ -36,17 +40,40 @@ Der Funktionsumfang ist vollständig umgesetzt (siehe unten). Es gibt keine beka
 | `einrichtung.php` | `GET status`, `POST einrichtung` |
 | `anmeldung.php` | `POST anmeldung/passwort`, `anmeldung/mfa`, `anmeldung/passkey-optionen`, `anmeldung/passkey`, `abmeldung` |
 | `profil.php` | `GET profil`, `PUT profil/stammdaten`, `POST profil/passwort`, `profil/totp/{start,bestaetigen,deaktivieren,neue-codes}`, `POST/DELETE profil/passkey`, `POST profil/passkey-optionen` |
-| `auslagen.php` | `GET/POST/PUT/DELETE auslagen`, `POST auslagen/status`, `GET/PUT/DELETE beleg` |
+| `auslagen.php` | `GET/POST/PUT/DELETE auslagen`, `POST auslagen/status`, `POST/DELETE einreichungen`, `GET/PUT/DELETE beleg` |
+| `kasse.php` | `GET kasse/auslagen`, `GET kasse/beleg`, `POST kasse/status` (Kassenwart/Vorstand) |
 | `admin.php` | `GET/POST/PUT admin/benutzer`, `POST admin/benutzer/{passwort,mfa-zuruecksetzen,loeschen}`, `GET/POST admin/db`, `POST admin/db/test` |
 
-## Datenbank (Schema 1)
+## Datenbank (Schema 2)
 
-`va_meta`, `va_benutzer`, `va_wiederherstellung`, `va_passkeys`, `va_auslagen`, `va_belege`
-(LONGBLOB), `va_anmeldeversuche`.
+`va_meta`, `va_benutzer` (mit `kassenrolle`), `va_wiederherstellung`, `va_passkeys`,
+`va_einreichungen`, `va_auslagen` (mit `einreichung_id`, `veranlasst_am`, `veranlasst_von`),
+`va_belege` (LONGBLOB), `va_anmeldeversuche`.
 
 ## Versionen
 
 Neueste zuerst.
+
+### 3.1.0 – Kassenwart und Vorstand
+
+- Neue **Kassenrolle** je Benutzer, unabhängig von Admin/Benutzer: *Keine*, *Kassenwart*, *Vorstand*.
+  Vergabe in der Benutzerverwaltung (auch beim Anlegen und für das eigene Konto)
+- Neue Ansicht **Kasse** (`#kasse`, Alt+5, nur mit Kassenrolle): eingereichte Auslagen aller
+  Mitglieder, gebündelt nach Einreichung, Filter *Zu erledigen / Veranlasst / Erstattet / Alle*,
+  Belege ansehen. Offene Auslagen bleiben privat
+- Neuer Status **„Erstattung veranlasst“** zwischen eingereicht und erstattet. Setzt nur der
+  Kassenwart (je Einreichung, mit Rücknahme solange nicht erstattet); „erstattet“ setzt weiterhin
+  nur das Mitglied selbst. Der Vorstand ist rein lesend; die IBAN sieht nur der Kassenwart
+- **Sperre ab „Erstattung veranlasst“**: Auslage nicht mehr löschbar, Angaben und Beleg nicht mehr
+  änderbar, Status nur noch veranlasst ↔ erstattet. Konten mit solchen Auslagen lassen sich nur
+  sperren, nicht löschen. Das Detail-Fenster zeigt, wann und von wem veranlasst wurde
+- **Einreichungen als Datensatz** (`va_einreichungen`): „Einreichen“ legt eine Einreichung an
+  (`POST einreichungen`), „Abbrechen“ zieht sie zurück (`DELETE einreichungen`). Grundlage für die
+  geplante Kommentarfunktion
+- Schema 2 (automatische Migration): `va_benutzer.kassenrolle`, `va_einreichungen`, Status-ENUM um
+  `veranlasst` erweitert, `va_auslagen.einreichung_id/veranlasst_am/veranlasst_von`
+- Backup-Import: Auslagen mit Status „Erstattung veranlasst“ werden als „eingereicht“ übernommen;
+  die Meldung nach dem Einspielen nennt ihre Anzahl, Hinweis im Benutzerhandbuch
 
 ### 3.0.6
 
@@ -73,16 +100,9 @@ Neueste zuerst.
 
 - [ ] Automatisierte Tests zumindest für die API-Routen
 - [ ] Ende-zu-Ende-Test auf echtem Webhosting (Apache mit `.htaccess`, nginx-Regeln aus der README)
-- [ ] Weitere Benutzerrollen (zusätzlich zu Mitglied/Admin):
-  - **Kassenwart:** sieht eingereichte Auslagen aller Mitglieder als To-do-Liste und kann markieren,
-    dass er die Erstattung veranlasst hat. Auf „erstattet“ setzt weiterhin nur der Einreicher selbst,
-    sobald das Geld angekommen ist (neuer Zwischenstatus bzw. Flag „Erstattung veranlasst“).
-  - **Vorstand:** sieht eingereichte und erledigte Vorgänge aller Mitglieder nur lesend, keine
-    Änderungen an fremden Auslagen.
-  - Achtung: Die Regel „Auslagen-Zugriffe immer mit `benutzer_id = ?`“ muss für diese Rollen gezielt
-    und nur lesend (bzw. beim Kassenwart nur für das Flag) gelockert werden; Admins sehen weiterhin
-    keine fremden Auslagen.
+- [x] Weitere Benutzerrollen Kassenwart und Vorstand (3.1.0)
 - [ ] Einfache Kommentarfunktion für Auslagen und Einreichungen, damit Kassenwart oder Vorstand
-  Rückfragen stellen und der Einreicher antworten kann
+  Rückfragen stellen und der Einreicher antworten kann (Branch `feature/kommentarfunktion`;
+  Einreichungen gibt es seit 3.1.0 als Datensatz, Vorstand darf dann auch kommentieren)
 - [ ] E-Mail-Versand über SMTP (Zugangsdaten im Admin-Bereich, ohne Fremdbibliothek), z. B. um
   den Kassenwart auf neue Einreichungen hinzuweisen

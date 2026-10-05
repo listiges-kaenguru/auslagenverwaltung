@@ -2,11 +2,15 @@
 // HILFSFUNKTIONEN (ohne DOM-Zustand der App)
 // =============================================
 
-/** Status-Definitionen (Reihenfolge = Arbeitsablauf) */
+/**
+ * Status-Definitionen (Reihenfolge = Arbeitsablauf). „veranlasst“ setzt nur der Kassenwart;
+ * kurz = Beschriftung für enge Stellen (Filter-Chips, Summenkarte).
+ */
 export const STATUS = {
-  offen:       { label: 'Offen',       icon: '○' },
-  eingereicht: { label: 'Eingereicht', icon: '◐' },
-  erstattet:   { label: 'Erstattet',   icon: '●' }
+  offen:       { label: 'Offen',                 kurz: 'Offen',       icon: '○' },
+  eingereicht: { label: 'Eingereicht',           kurz: 'Eingereicht', icon: '◐' },
+  veranlasst:  { label: 'Erstattung veranlasst', kurz: 'Veranlasst',  icon: '◕' },
+  erstattet:   { label: 'Erstattet',             kurz: 'Erstattet',   icon: '●' }
 };
 export const STATUS_LISTE = Object.keys(STATUS);
 
@@ -30,6 +34,13 @@ export function formatiereDatum(iso) {
   const treffer = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso || '');
   if (!treffer) return '—';
   return `${treffer[3]}.${treffer[2]}.${treffer[1]}`;
+}
+
+/** ISO-Zeitpunkt (UTC) als lokales Datum mit Uhrzeit, z. B. „05.10.2026, 14:30“ */
+export function formatiereZeitpunkt(iso) {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
 }
 
 const euroFormat = new Intl.NumberFormat('de-DE', { style: 'currency', currency: 'EUR' });

@@ -1,12 +1,14 @@
 // =============================================
 // DETAIL-MODAL (Bottom Sheet)
 // - Status ändern, Beleg nachreichen/ersetzen, Auslage bearbeiten oder löschen
+// - Nach „Erstattung veranlasst“ (Kassenwart) ist die Auslage gesperrt: nur noch der Wechsel
+//   zwischen „veranlasst“ und „erstattet“, keine Änderungen, kein Löschen (Server prüft ebenso)
 // - Zurück-Taste (Android) schließt das Modal statt die App
 // =============================================
 import {
   STATUS_LISTE, statusInfo, escapeHtml, formatiereDatum, formatiereBetrag, betragAlsText,
-  parseBetrag, formatiereGroesse, heuteISO, sichererDateiname, dateiEndung, ladeDateiHerunter,
-  zeigeToast, registriereAktionen, meldeDatenAenderung
+  parseBetrag, formatiereGroesse, formatiereZeitpunkt, heuteISO, sichererDateiname, dateiEndung,
+  ladeDateiHerunter, zeigeToast, registriereAktionen, meldeDatenAenderung
 } from './hilfen.js';
 import {
   findeAuslage, aktualisiereAuslage, loescheAuslage, holeBeleg, setzeBeleg
@@ -131,6 +133,7 @@ async function rendereInhalt() {
   const auslage = findeAuslage(aktuelleId);
   if (!auslage) { schliesseDetail(); return; }
 
+  if (modus === 'bearbeiten' && auslage.gesperrt) modus = 'anzeige';
   if (modus === 'bearbeiten') {
     gibBelegFrei();
     inhalt.innerHTML = bearbeitenHtml(auslage);
@@ -164,12 +167,28 @@ function kopfHtml(titel, untertitel) {
     </div>`;
 }
 
+/** Welche Status darf das Mitglied selbst wählen? (Regeln wie im Server) */
+function statusWaehlbar(auslage, status) {
+  if (status === auslage.status) return true;
+  if (auslage.gesperrt) return status === 'veranlasst' || status === 'erstattet';
+  return status !== 'veranlasst';
+}
+
 function anzeigeHtml(auslage, beleg) {
   const statusKnoepfe = STATUS_LISTE.map((s) => {
     const info = statusInfo(s);
     return `<button type="button" class="status-btn status-btn--${s}" data-aktion="detail-status"
-      data-status="${s}" aria-pressed="${auslage.status === s}">${info.icon} ${info.label}</button>`;
+      data-status="${s}" aria-pressed="${auslage.status === s}"
+      ${statusWaehlbar(auslage, s) ? '' : 'disabled'}>${info.icon} ${info.label}</button>`;
   }).join('');
+
+  const sperrHinweis = auslage.gesperrt
+    ? `<p class="klein-hinweis klein-hinweis--links sperr-hinweis">🔒 Erstattung veranlasst
+        ${auslage.veranlasstAm ? `am ${formatiereZeitpunkt(auslage.veranlasstAm)}` : ''}
+        ${auslage.veranlasstVon ? `von ${escapeHtml(auslage.veranlasstVon)}` : ''}.
+        Die Auslage kann nicht mehr geändert oder gelöscht werden.
+        ${auslage.status === 'veranlasst' ? 'Ist das Geld angekommen, setze sie auf „Erstattet“.' : ''}</p>`
+    : `<p class="klein-hinweis klein-hinweis--links">„Erstattung veranlasst“ setzt der Kassenwart.</p>`;
 
   return `
     ${kopfHtml(auslage.haendler, formatiereDatum(auslage.datum))}
@@ -188,6 +207,7 @@ function anzeigeHtml(auslage, beleg) {
     <div class="info-kasten">
       <div class="info-kasten__label" id="statusLabel">Status</div>
       <div class="status-leiste" role="group" aria-labelledby="statusLabel">${statusKnoepfe}</div>
+      ${sperrHinweis}
     </div>
 
     <div class="modal-abschnitt">
@@ -195,14 +215,16 @@ function anzeigeHtml(auslage, beleg) {
       ${belegHtml(auslage, beleg)}
     </div>
 
+    ${auslage.gesperrt ? '' : `
     <div class="modal-aktionen">
       <button type="button" class="btn btn-sekundaer" data-aktion="detail-bearbeiten">✏️ Angaben bearbeiten</button>
       <button type="button" class="btn btn-gefahr" data-aktion="detail-loeschen">🗑 Auslage löschen</button>
-    </div>
+    </div>`}
   `;
 }
 
 function belegHtml(auslage, beleg) {
+  if (auslage.gesperrt) return belegNurAnsehenHtml(auslage, beleg);
   if (!beleg) {
     return `
       <div class="beleg-fehlt">
@@ -231,6 +253,28 @@ function belegHtml(auslage, beleg) {
       <button type="button" class="btn btn-gefahr btn-klein" data-aktion="detail-beleg-entfernen">Entfernen</button>
     </div>
     ${belegKnoepfeHtml('detail', { ersetzen: true })}`;
+}
+
+/** Gesperrte Auslage: Beleg nur ansehen und herunterladen */
+function belegNurAnsehenHtml(auslage, beleg) {
+  if (!beleg) {
+    return `
+      <div class="beleg-fehlt">
+        <div class="beleg-fehlt__icon" aria-hidden="true">⚠</div>
+        <div class="beleg-fehlt__titel">Kein Beleg hinterlegt</div>
+      </div>`;
+  }
+  return `
+    ${istPdf(beleg)
+      ? `<div class="beleg-anzeige beleg-anzeige--pdf">
+          <span class="pdf-icon" aria-hidden="true">📄</span>
+          <span>PDF-Beleg · ${formatiereGroesse(beleg.size)}</span>
+        </div>
+        <a class="btn btn-sekundaer btn-klein beleg-oeffnen" href="${belegUrl}" target="_blank" rel="noopener">PDF öffnen</a>`
+      : `<div class="beleg-anzeige"><img src="${belegUrl}" alt="Beleg von ${escapeHtml(auslage.haendler)}"></div>`}
+    <div class="knopf-reihe beleg-aktionen">
+      <button type="button" class="btn btn-sekundaer btn-klein" data-aktion="detail-beleg-download">⬇ Herunterladen</button>
+    </div>`;
 }
 
 function bearbeitenHtml(auslage) {
@@ -314,8 +358,10 @@ registriereAktionen({
       return;
     }
     // Nur die Knöpfe aktualisieren – kein Neuladen des Belegs nötig
+    const auslage = findeAuslage(aktuelleId);
     for (const b of inhalt.querySelectorAll('[data-aktion="detail-status"]')) {
       b.setAttribute('aria-pressed', String(b.dataset.status === neuerStatus));
+      b.disabled = !!auslage && !statusWaehlbar(auslage, b.dataset.status);
     }
     zeigeToast(`Status: ${statusInfo(neuerStatus).label}`);
     meldeDatenAenderung();

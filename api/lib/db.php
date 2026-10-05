@@ -5,10 +5,10 @@
 // =============================================
 declare(strict_types=1);
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 /** Tabellen in Abhängigkeitsreihenfolge (für Kopieren beim DB-Wechsel) */
-const TABELLEN = ['va_benutzer', 'va_wiederherstellung', 'va_passkeys', 'va_auslagen', 'va_belege'];
+const TABELLEN = ['va_benutzer', 'va_wiederherstellung', 'va_passkeys', 'va_einreichungen', 'va_auslagen', 'va_belege'];
 
 /** Neue Verbindung aufbauen; wirft ApiFehler mit verständlicher Meldung */
 function verbinde(array $db): PDO
@@ -159,9 +159,46 @@ function migriere(PDO $pdo): void
         ) {$opt}");
     }
 
+    if ($version < 2) {
+        // Kassenrollen, Zwischenstatus „Erstattung veranlasst“ und Einreichungen als Datensatz.
+        // DDL ist nicht transaktional → jeder Schritt prüft, ob er schon erledigt ist.
+        if (!spalteVorhanden($pdo, 'va_benutzer', 'kassenrolle')) {
+            $pdo->exec("ALTER TABLE va_benutzer
+                ADD COLUMN kassenrolle ENUM('keine','kassenwart','vorstand') NOT NULL DEFAULT 'keine' AFTER rolle");
+        }
+
+        $pdo->exec("CREATE TABLE IF NOT EXISTS va_einreichungen (
+            id CHAR(36) CHARACTER SET ascii NOT NULL PRIMARY KEY,
+            benutzer_id INT UNSIGNED NOT NULL,
+            erstellt_am DATETIME(3) NOT NULL,
+            KEY ix_benutzer (benutzer_id),
+            CONSTRAINT fk_einr_benutzer FOREIGN KEY (benutzer_id) REFERENCES va_benutzer(id) ON DELETE CASCADE
+        ) {$opt}");
+
+        $pdo->exec("ALTER TABLE va_auslagen
+            MODIFY status ENUM('offen','eingereicht','veranlasst','erstattet') NOT NULL DEFAULT 'offen'");
+        if (!spalteVorhanden($pdo, 'va_auslagen', 'einreichung_id')) {
+            $pdo->exec("ALTER TABLE va_auslagen
+                ADD COLUMN einreichung_id CHAR(36) CHARACTER SET ascii NULL AFTER status,
+                ADD COLUMN veranlasst_am DATETIME(3) NULL AFTER einreichung_id,
+                ADD COLUMN veranlasst_von INT UNSIGNED NULL AFTER veranlasst_am,
+                ADD KEY ix_status (status),
+                ADD CONSTRAINT fk_ausl_einreichung FOREIGN KEY (einreichung_id) REFERENCES va_einreichungen(id) ON DELETE SET NULL,
+                ADD CONSTRAINT fk_ausl_veranlasst FOREIGN KEY (veranlasst_von) REFERENCES va_benutzer(id) ON DELETE SET NULL");
+        }
+    }
+
     $stmt = $pdo->prepare("INSERT INTO va_meta (schluessel, wert) VALUES ('schema_version', ?)
         ON DUPLICATE KEY UPDATE wert = VALUES(wert)");
     $stmt->execute([(string)SCHEMA_VERSION]);
+}
+
+function spalteVorhanden(PDO $pdo, string $tabelle, string $spalte): bool
+{
+    $stmt = $pdo->prepare('SELECT COUNT(*) FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?');
+    $stmt->execute([$tabelle, $spalte]);
+    return (bool)$stmt->fetchColumn();
 }
 
 /** Übersicht über eine (Ziel-)Datenbank für den Admin-Dialog */

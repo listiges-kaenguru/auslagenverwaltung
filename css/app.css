@@ -43,6 +43,9 @@
 
   --blau:            #1d4ed8;
   --blau-aktiv:      #1e40af;
+  --blau-hell:       #dbeafe;
+  --blau-rand:       #a9c3f5;
+  --blau-text:       #1e3a8a;
   --fokus:           #1d4ed8;
 
   --rot:             #b91c1c;
@@ -98,6 +101,10 @@
   --amber-hell:      #33260c;
   --amber-rand:      #5c4313;
   --amber-text:      #fcd34d;
+
+  --blau-hell:       #172447;
+  --blau-rand:       #2a4580;
+  --blau-text:       #93c5fd;
 
   --fokus:           #60a5fa;
 
@@ -414,6 +421,7 @@ textarea.formular-feld { resize: vertical; min-height: 76px; line-height: 1.45; 
 }
 .badge--offen       { background: var(--grau-badge-hg); color: var(--grau-badge-text); }
 .badge--eingereicht { background: var(--amber-hell);    color: var(--amber-text); }
+.badge--veranlasst  { background: var(--blau-hell);     color: var(--blau-text); }
 .badge--erstattet   { background: var(--gruen-hell);    color: var(--gruen-text); }
 
 .status-hinweis {
@@ -532,7 +540,7 @@ textarea.formular-feld { resize: vertical; min-height: 76px; line-height: 1.45; 
 .zusammenfassung-karte__anzahl { font-size: 0.875rem; color: var(--betont-text-2); margin-top: 6px; }
 .zusammenfassung-karte__aufteilung {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 8px;
   margin-top: 16px;
   padding-top: 14px;
@@ -817,6 +825,8 @@ textarea.formular-feld { resize: vertical; min-height: 76px; line-height: 1.45; 
 }
 .status-btn--offen[aria-pressed="true"]       { border-color: var(--offen-aktiv); background: var(--offen-aktiv); color: #ffffff; }
 .status-btn--eingereicht[aria-pressed="true"] { border-color: var(--amber);       background: var(--amber);       color: #ffffff; }
+.status-btn--veranlasst[aria-pressed="true"]  { border-color: var(--blau);        background: var(--blau);        color: #ffffff; }
+.status-btn:disabled:not([aria-pressed="true"]) { border-style: dashed; color: var(--text-2); cursor: not-allowed; }
 .status-btn--erstattet[aria-pressed="true"]   { border-color: var(--akzent);      background: var(--akzent);      color: #ffffff; }
 
 .beleg-anzeige {
@@ -873,6 +883,7 @@ textarea.formular-feld { resize: vertical; min-height: 76px; line-height: 1.45; 
   color: var(--text);
 }
 .export-statistik--eingereicht { background: var(--amber-hell); border-color: var(--amber-rand); color: var(--amber-text); }
+.export-statistik--veranlasst  { background: var(--blau-hell);  border-color: var(--blau-rand);  color: var(--blau-text); }
 .export-statistik--erstattet   { background: var(--gruen-hell); border-color: var(--gruen-rand); color: var(--gruen-text); }
 .export-statistik--alle        { background: var(--betont-hg);  border-color: var(--betont-rand); color: var(--betont-text); }
 
@@ -1258,3 +1269,65 @@ body.ohne-anmeldung .haupt-inhalt { padding-bottom: calc(24px + var(--sicher-unt
   border-top: 1px solid var(--rand);
 }
 .auswahl-summe { font-size: 0.9375rem; }
+
+/* =============================================
+   KASSE (Kassenwart / Vorstand)
+   ============================================= */
+@media (max-width: 420px) {
+  .zusammenfassung-karte__aufteilung { grid-template-columns: repeat(2, 1fr); }
+}
+
+.sperr-hinweis { margin-top: 10px; }
+
+.kasse-kopf { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.kasse-kopf .seiten-titel { margin-bottom: 0; }
+.kasse-kopf__knopf { width: auto; }
+.kasse-kopf + .abschnitt__text { margin: 8px 0 14px; }
+
+.kasse-liste { display: flex; flex-direction: column; gap: 14px; }
+.kasse-gruppe {
+  background: var(--flaeche);
+  border: 1px solid var(--rand);
+  border-radius: 14px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.kasse-gruppe__kopf { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.kasse-gruppe__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.kasse-gruppe__name { font-weight: 700; font-size: 1.0625rem; overflow-wrap: anywhere; }
+.kasse-gruppe__unter { font-size: 0.875rem; color: var(--text-2); overflow-wrap: anywhere; }
+.kasse-gruppe__summe { font-weight: 800; font-size: 1.125rem; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.kasse-posten { display: flex; flex-direction: column; border-top: 1px solid var(--rand); }
+.kasse-posten__zeile {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--rand);
+}
+.kasse-posten__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.kasse-posten__haendler { font-weight: 600; overflow-wrap: anywhere; }
+.kasse-posten__info { font-size: 0.875rem; color: var(--text-2); overflow-wrap: anywhere; }
+.kasse-posten__merkmale { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 4px; }
+.kasse-posten__betrag { font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+.link-knopf {
+  border: none;
+  background: none;
+  padding: 4px 0;
+  min-height: 32px;
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--blau-text);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Kassenrolle in der Benutzerverwaltung */
+.kassenrolle-wahl { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; }
+.kassenrolle-wahl__label { flex-basis: 100%; font-size: 0.875rem; color: var(--text-2); font-weight: 600; }
+.kassenrolle-wahl .filter-chip { min-height: 36px; padding: 6px 12px; }

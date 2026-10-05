@@ -1,7 +1,8 @@
 // =============================================
 // EINREICHEN
-// Offene Auslagen auswählen → PDF (Übersicht + Belege) erstellen → Status „Eingereicht“
-// speichern → PDF anbieten. Bei „Abbrechen“ wird der Status wieder auf „Offen“ gesetzt.
+// Offene Auslagen auswählen → PDF (Übersicht + Belege) erstellen → Einreichung anlegen
+// (Status „Eingereicht“) → PDF anbieten. Bei „Abbrechen“ wird die Einreichung zurückgezogen.
+// Die Einreichung ist ein eigener Datensatz, damit Kassenwart/Vorstand sie gebündelt sehen.
 // Der Status wird bewusst VOR dem Anbieten gespeichert: „PDF öffnen“ kann die App-Seite
 // verlassen (Firefox-App), und eine erst dann gestartete Anfrage ist nicht verlässlich.
 // =============================================
@@ -9,7 +10,7 @@ import {
   escapeHtml, formatiereBetrag, formatiereDatum, plural, summe, zeigeToast, mitLadezustand,
   registriereAktionen, meldeDatenAenderung, ladeDateiHerunter
 } from './hilfen.js';
-import { setzeStatus } from './speicher.js';
+import { reicheEin, zieheEinreichungZurueck } from './speicher.js';
 import { auslagenFuerAuswahl, erstelleEinreichung } from './export.js';
 import { hatStammdaten } from './stammdaten.js';
 
@@ -132,11 +133,11 @@ registriereAktionen({
       const ids = auswahl.map((a) => a.id);
       try {
         const { blob, dateiname, belegFehler } = await erstelleEinreichung(auswahl);
-        await setzeStatus(ids, 'eingereicht');
+        const einreichungId = await reicheEin(ids);
         meldeDatenAenderung();
 
         if (!await ladeDateiHerunter(blob, dateiname)) {
-          await setzeStatus(ids, 'offen');
+          await zieheEinreichungZurueck(einreichungId);
           meldeDatenAenderung();
           zeigeToast('Abgebrochen – die Auslagen bleiben offen', 4000);
           return;

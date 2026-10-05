@@ -6,7 +6,8 @@ jederzeit, was noch offen ist, was eingereicht ist und was schon erstattet wurde
 
 Deine Daten liegen auf dem Server deines Vereins. Du kannst die App deshalb auf dem Smartphone und
 am Computer nutzen, mit demselben Stand. Andere Mitglieder sehen deine Auslagen nicht.
-Das gilt auch für Administratoren.
+Das gilt auch für Administratoren. Nur **Kassenwart** und **Vorstand** sehen deine Auslagen, und
+zwar erst, wenn du sie eingereicht hast.
 
 **Inhalt**
 
@@ -20,7 +21,8 @@ Das gilt auch für Administratoren.
 8. [Datensicherung und Umstieg von der alten App](#8-datensicherung-und-umstieg-von-der-alten-app)
 9. [Dein Profil](#9-dein-profil)
 10. [Häufige Fragen und Probleme](#10-häufige-fragen-und-probleme)
-11. [Für Administratoren](#11-für-administratoren)
+11. [Für Kassenwart und Vorstand](#11-für-kassenwart-und-vorstand)
+12. [Für Administratoren](#12-für-administratoren)
 
 ---
 
@@ -61,13 +63,14 @@ bleiben dabei erhalten. Welche Version du gerade nutzt, siehst du ganz unten im 
 
 ## 3. Die App im Überblick
 
-Unten auf dem Bildschirm findest du vier Bereiche:
+Unten auf dem Bildschirm findest du vier Bereiche (Kassenwart und Vorstand fünf):
 
 | Bereich | Wofür |
 |---|---|
 | **Neu** | Eine neue Auslage mit Beleg erfassen |
 | **Übersicht** | Alle Auslagen mit Summen, nach Status filtern, Details öffnen, einreichen |
 | **Export** | PDF, Excel-Tabelle (CSV) oder ZIP mit Belegen erstellen, Datensicherung |
+| **Kasse** | Nur für Kassenwart und Vorstand: eingereichte Auslagen aller Mitglieder ([Abschnitt 11](#11-für-kassenwart-und-vorstand)) |
 | **Profil** | Stammdaten, Passwort, Zwei-Faktor-Anmeldung, Passkeys, Abmelden |
 
 Jede Auslage hat einen **Status**:
@@ -76,13 +79,15 @@ Jede Auslage hat einen **Status**:
 |---|---|
 | ○ **Offen** | Erfasst, aber noch nicht bei der Kasse eingereicht |
 | ◐ **Eingereicht** | Bei der Kasse abgegeben, Geld noch nicht erhalten |
-| ● **Erstattet** | Das Geld ist auf deinem Konto |
+| ◕ **Erstattung veranlasst** | Der Kassenwart hat die Überweisung angestoßen. Diesen Status setzt nur der Kassenwart. |
+| ● **Erstattet** | Das Geld ist auf deinem Konto. Diesen Status setzt du selbst. |
 
 Mit dem Knopf oben rechts wechselst du zwischen hellem Design, dunklem Design und der Einstellung
 deines Geräts.
 
 **Am Computer** springst du mit den Tasten **Alt+1** bis **Alt+4** direkt zu Neu, Übersicht,
-Export und Profil. **Esc** schließt ein geöffnetes Fenster.
+Export und Profil, mit **Alt+5** zur Kasse (nur Kassenwart und Vorstand). **Esc** schließt ein
+geöffnetes Fenster.
 
 ## 4. Auslage erfassen
 
@@ -114,18 +119,26 @@ Einen Beleg musst du nicht sofort anhängen. Du kannst ihn später nachreichen
 ## 5. Auslagen ansehen und ändern
 
 Unter **Übersicht** siehst du oben die Gesamtsumme und darunter die Summen je Status.
-Mit den Knöpfen **Alle / Offen / Eingereicht / Erstattet** filterst du die Liste.
+Mit den Knöpfen **Alle / Offen / Eingereicht / Veranlasst / Erstattet** filterst du die Liste.
 
 Tippe auf eine Auslage, um die **Details** zu öffnen. Dort kannst du:
 
 - **den Status ändern:** auf *Offen*, *Eingereicht* oder *Erstattet* tippen. Setze eine Auslage
-  auf **Erstattet**, sobald das Geld angekommen ist.
+  auf **Erstattet**, sobald das Geld angekommen ist. *Erstattung veranlasst* setzt nur der
+  Kassenwart, der Knopf ist für dich deshalb ausgegraut.
 - **den Beleg ansehen**, **⬇ herunterladen**, **ersetzen** (📷 Neues Foto, 📁 Andere Datei) oder
   **entfernen**. Fehlt der Beleg, kannst du ihn hier nachreichen.
 - mit **✏️ Angaben bearbeiten** Datum, Händler, Betrag und Verwendungszweck ändern.
 - mit **🗑 Auslage löschen** die Auslage entfernen. Das kann nicht rückgängig gemacht werden.
 
 Geschlossen wird das Fenster mit ✕, mit einem Tipp daneben oder mit der Zurück-Taste des Smartphones.
+
+**🔒 Nach „Erstattung veranlasst“ ist die Auslage gesperrt.** Damit nachvollziehbar bleibt, was
+erstattet wurde, kannst du sie dann nicht mehr löschen. Auch Angaben und Beleg kannst du nicht mehr
+ändern; den Beleg kannst du weiterhin ansehen und herunterladen. Den Status kannst du nur noch
+zwischen *Erstattung veranlasst* und *Erstattet* wechseln. Im Detail-Fenster steht, wann und von
+wem die Erstattung veranlasst wurde. Ist etwas falsch, wende dich an den Kassenwart. Er kann die
+Veranlassung zurücknehmen, solange du die Auslage noch nicht auf *Erstattet* gesetzt hast.
 
 Hast du die App auf mehreren Geräten geöffnet, holt sie beim Zurückwechseln automatisch den
 neuesten Stand vom Server.
@@ -146,6 +159,9 @@ So gibst du deine offenen Auslagen bei der Kasse ab:
 Die eingereichten Auslagen stehen danach auf **Eingereicht**. Tippst du im Fenster
 „Datei ist fertig“ auf **Abbrechen**, bleiben sie **Offen**.
 
+Kassenwart und Vorstand sehen deine Einreichung jetzt auch in der App, zusammen mit den Belegen.
+Das PDF schickst du trotzdem wie gewohnt an die Kasse.
+
 **Das enthält das Einreichungs-PDF:**
 
 - eine Tabelle mit allen ausgewählten Auslagen (älteste zuerst) und die Gesamtsumme
@@ -160,7 +176,7 @@ Die eingereichten Auslagen stehen danach auf **Eingereicht**. Tippst du im Fenst
 ## 7. Exportieren
 
 Unter **Export** wählst du oben aus, welche Auslagen exportiert werden sollen:
-**Offen**, **Eingereicht** (voreingestellt), **Erstattet** oder **Alle**. Darunter siehst du die
+**Offen**, **Eingereicht** (voreingestellt), **Erstattung veranlasst**, **Erstattet** oder **Alle**. Darunter siehst du die
 enthaltenen Auslagen und die Summe.
 
 | Knopf | Ergebnis |
@@ -187,6 +203,11 @@ das letzte älter als 30 Tage, erinnert dich die App daran.
 Übernommen werden die Auslagen mit Status und Belegen. Deine Stammdaten werden nur übernommen,
 wenn sie im Profil noch leer sind. Auslagen, die schon vorhanden sind, werden übersprungen. Du
 kannst dasselbe Backup also gefahrlos mehrmals einspielen.
+
+**Hinweis:** Auslagen, die im Backup auf **Erstattung veranlasst** stehen, werden als
+**Eingereicht** übernommen, denn diesen Status kann nur der Kassenwart setzen. Damit entfällt
+auch ihre Sperre. Die App weist nach dem Einspielen darauf hin. Bitte den Kassenwart, die
+Erstattung bei Bedarf erneut als veranlasst zu markieren.
 
 ## 9. Dein Profil
 
@@ -274,14 +295,46 @@ In der aus **Firefox** installierten App gibt es für PDFs nur **PDF öffnen**. 
 Firefox. Dort speicherst du es über das Download-Symbol ⬇.
 
 **Kann der Administrator meine Auslagen sehen?**
-Nein. Administratoren verwalten nur die Konten. Die Auslagen sieht jede Person nur selbst.
+Nein. Administratoren verwalten nur die Konten. Deine offenen Auslagen sieht niemand außer dir.
+Sobald du einreichst, sehen **Kassenwart** und **Vorstand** sie, aber nur lesend. Der Kassenwart
+kann nur „Erstattung veranlasst“ setzen.
 
 **Ich habe versehentlich eingereicht.**
-Öffne die Auslage in der Übersicht und setze den Status wieder auf **Offen**.
+Öffne die Auslage in der Übersicht und setze den Status wieder auf **Offen**. Das geht, solange der
+Kassenwart die Erstattung noch nicht veranlasst hat.
+
+**Ich kann eine Auslage nicht mehr löschen oder ändern.**
+Der Kassenwart hat die Erstattung schon veranlasst (🔒, siehe [Abschnitt 5](#5-auslagen-ansehen-und-ändern)).
 
 ---
 
-## 11. Für Administratoren
+## 11. Für Kassenwart und Vorstand
+
+Hat dir der Administrator die Rolle **Kassenwart** oder **Vorstand** gegeben, siehst du unten
+zusätzlich den Bereich **Kasse**. Dort stehen die eingereichten Auslagen **aller Mitglieder**,
+gebündelt nach Einreichung, mit Name, Datum der Einreichung und Summe. Offene Auslagen der
+Mitglieder siehst du nicht.
+
+- Mit **Zu erledigen / Veranlasst / Erstattet / Alle** filterst du die Liste. *Zu erledigen* sind
+  alle Auslagen mit Status *Eingereicht*.
+- **📎 Beleg ansehen** öffnet den Beleg einer Auslage zum Ansehen oder Herunterladen.
+- **🔄 Aktualisieren** holt den neuesten Stand vom Server.
+
+**Nur Kassenwart:**
+
+- Bei jeder Einreichung steht die **IBAN** des Mitglieds (aus seinen Stammdaten).
+- Hast du die Überweisung angestoßen, tippe auf **💸 Erstattung veranlasst**. Alle noch
+  eingereichten Auslagen dieser Einreichung stehen dann auf *Erstattung veranlasst*. Das Mitglied
+  kann sie ab jetzt nicht mehr ändern oder löschen und setzt sie selbst auf *Erstattet*, sobald das
+  Geld angekommen ist.
+- Mit **↩ Veranlassung zurücknehmen** machst du ein versehentliches Veranlassen rückgängig. Das
+  geht nur, solange das Mitglied den Eingang noch nicht als *Erstattet* bestätigt hat.
+
+Der **Vorstand** kann alles ansehen, aber nichts ändern.
+
+Deine eigenen Auslagen verwaltest du wie jedes andere Mitglied unter **Übersicht**.
+
+## 12. Für Administratoren
 
 Als Administrator findest du im **Profil** zusätzlich den Bereich **⚙️ Administration**.
 Die Installation und die Einrichtung des Servers sind in der [README](README.md) beschrieben.
@@ -290,7 +343,8 @@ Die Installation und die Einrichtung des Servers sind in der [README](README.md)
 
 1. **➕ Neuer Benutzer** antippen.
 2. Einen **Benutzernamen** eingeben (3–50 Zeichen: Buchstaben, Ziffern, `. _ @ -`). Vor- und
-   Nachname sind optional. Als **Rolle** *Benutzer* oder *Administrator* wählen.
+   Nachname sind optional. Als **Rolle** *Benutzer* oder *Administrator* wählen und als
+   **Kassenrolle** *Keine*, *Kassenwart* oder *Vorstand*.
 3. **Anlegen** antippen. Die App zeigt ein **Startpasswort**, und zwar **nur dieses eine Mal**.
    Kopiere es und gib es der Person zusammen mit Benutzername und Adresse der App weiter.
    Bei der ersten Anmeldung muss sie ein eigenes Passwort festlegen.
@@ -303,16 +357,17 @@ In der Liste siehst du zu jedem Konto die Rolle, den Status (z. B. *Gesperrt*, *
 | Knopf | Wirkung |
 |---|---|
 | **Zum Admin machen / Zum Benutzer machen** | Rolle ändern |
+| **Kassenrolle: Keine / Kassenwart / Vorstand** | Zugang zum Bereich **Kasse** vergeben oder entziehen (siehe [Abschnitt 11](#11-für-kassenwart-und-vorstand)). Auch für dein eigenes Konto möglich. |
 | **Sperren / Entsperren** | Gesperrte Konten können sich nicht anmelden. Laufende Sitzungen enden sofort. |
 | **Passwort zurücksetzen** | Erzeugt ein neues Startpasswort. Alle Sitzungen des Kontos enden. |
 | **2FA & Passkeys zurücksetzen** | Entfernt Zwei-Faktor-Anmeldung und alle Passkeys, z. B. wenn das Smartphone verloren ging |
-| **Löschen** | Löscht das Konto **mit allen Auslagen und Belegen** endgültig. Bestätigung mit deinem Passwort. |
+| **Löschen** | Löscht das Konto **mit allen Auslagen und Belegen** endgültig. Bestätigung mit deinem Passwort. Wurde für das Konto schon eine Erstattung veranlasst, ist Löschen nicht möglich. Sperre es dann stattdessen. |
 
-Dein eigenes Konto kannst du hier nicht ändern. Der **letzte aktive Administrator** kann nicht
+Dein eigenes Konto kannst du hier nicht ändern, außer der Kassenrolle. Der **letzte aktive Administrator** kann nicht
 gesperrt, herabgestuft oder gelöscht werden. So kann sich niemand versehentlich aussperren.
 
 Wer ein Konto verlässt, sollte vorher unter **Export** ein Backup seiner Auslagen speichern.
-Administratoren haben keinen Zugriff auf fremde Auslagen.
+Administratoren haben keinen Zugriff auf fremde Auslagen, außer sie haben selbst eine Kassenrolle.
 
 ### Datenbank-Verbindung
 

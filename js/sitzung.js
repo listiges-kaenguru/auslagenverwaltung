@@ -14,6 +14,9 @@ export async function ladeStatus() {
 export const serverStatus     = () => status;
 export const aktuellerBenutzer = () => status.benutzer;
 export const istAdmin          = () => status.benutzer?.rolle === 'admin';
+/** Kassenwart oder Vorstand → Ansicht „Kasse“ (Vorstand nur lesend) */
+export const hatKassenrolle    = () => ['kassenwart', 'vorstand'].includes(status.benutzer?.kassenrolle);
+export const istKassenwart     = () => status.benutzer?.kassenrolle === 'kassenwart';
 export const maxBelegBytes     = () => status.maxBelegBytes;
 
 /** Passkeys brauchen HTTPS (oder localhost) und Browser-Unterstützung */

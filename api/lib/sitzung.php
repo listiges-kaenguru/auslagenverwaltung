@@ -1,6 +1,8 @@
 <?php
 // =============================================
 // SITZUNG & BERECHTIGUNGEN
+// - Rollen: rolle (admin/user) = technische Verwaltung; kassenrolle (keine/kassenwart/vorstand)
+//   = fachlicher Einblick in fremde Auslagen ab „eingereicht“. Beides ist unabhängig voneinander.
 // - PHP-Sitzung mit HttpOnly-/SameSite-Cookie
 // - sitzung_gen: wird bei Passwortwechsel, Sperre oder MFA-Reset erhöht → alte Sitzungen enden
 // - Brute-Force-Schutz über va_anmeldeversuche
@@ -71,6 +73,20 @@ function erfordereAdmin(): array
 {
     $benutzer = erfordereLogin();
     if ($benutzer['rolle'] !== 'admin') throw new ApiFehler('Nur für Administratoren.', 403);
+    return $benutzer;
+}
+
+/**
+ * Kassenwart oder Vorstand: Einblick in eingereichte Auslagen aller Mitglieder.
+ * $schreibend = true → nur Kassenwart (darf „Erstattung veranlasst“ setzen); der Vorstand liest nur.
+ */
+function erfordereKassenrolle(bool $schreibend = false): array
+{
+    $benutzer = erfordereLogin();
+    $erlaubt = $schreibend ? ['kassenwart'] : ['kassenwart', 'vorstand'];
+    if (!in_array($benutzer['kassenrolle'], $erlaubt, true)) {
+        throw new ApiFehler($schreibend ? 'Nur für den Kassenwart.' : 'Nur für Kassenwart und Vorstand.', 403);
+    }
     return $benutzer;
 }
 
@@ -148,6 +164,7 @@ function benutzerFuerClient(array $b): array
         'id'                  => (int)$b['id'],
         'benutzername'        => $b['benutzername'],
         'rolle'               => $b['rolle'],
+        'kassenrolle'         => $b['kassenrolle'],
         'mussPasswortAendern' => (bool)$b['muss_passwort_aendern'],
         'stammdaten'          => [
             'vorname'  => $b['vorname'],

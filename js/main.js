@@ -5,12 +5,13 @@
 // =============================================
 import { aktionFuer, registriereAktionen, zeigeToast, navigiere, escapeHtml } from './hilfen.js';
 import { aktualisiereVomServer, leereSpeicher } from './speicher.js';
-import { ladeStatus, aktuellerBenutzer, anzeigeName } from './sitzung.js';
+import { ladeStatus, aktuellerBenutzer, anzeigeName, hatKassenrolle } from './sitzung.js';
 import { anmeldeSchritt, rendereAnmeldeSchritt } from './ansicht-anmeldung.js';
 import { rendereNeu } from './ansicht-neu.js';
 import { rendereUebersicht } from './ansicht-uebersicht.js';
 import { rendereExport } from './ansicht-export.js';
 import { rendereProfil, vergissProfilZustand } from './ansicht-profil.js';
+import { rendereKasse, vergissKassenDaten } from './ansicht-kasse.js';
 import { initDetail, istDetailOffen, schliesseDetail } from './detail.js';
 import { initPWA } from './pwa.js';
 import './einreichen.js';
@@ -20,6 +21,7 @@ const ANSICHTEN = {
   neu:        rendereNeu,
   uebersicht: rendereUebersicht,
   export:     rendereExport,
+  kasse:      rendereKasse,
   profil:     rendereProfil
 };
 
@@ -33,7 +35,9 @@ let appBereit = false; // angemeldet und Daten geladen
 function ansichtAusHash() {
   const name = location.hash.slice(1);
   // Nur eigene Einträge – sonst würden z. B. #__proto__ oder #constructor durchrutschen
-  return Object.hasOwn(ANSICHTEN, name) ? name : 'neu';
+  if (!Object.hasOwn(ANSICHTEN, name)) return 'neu';
+  if (name === 'kasse' && !hatKassenrolle()) return 'neu';
+  return name;
 }
 
 function rendereAnsicht({ nachOben = false } = {}) {
@@ -90,6 +94,7 @@ document.addEventListener('angemeldet', weiterNachStatus);
 document.addEventListener('anmelde-schritt', weiterNachStatus);
 document.addEventListener('abgemeldet', () => {
   vergissProfilZustand();
+  vergissKassenDaten();
   weiterNachStatus();
 });
 
@@ -100,6 +105,7 @@ document.addEventListener('nicht-angemeldet', async () => {
   zeigeToast('Sitzung beendet – bitte erneut anmelden', 5000);
   await ladeStatus().catch(() => {});
   vergissProfilZustand();
+  vergissKassenDaten();
   weiterNachStatus();
 });
 
@@ -121,6 +127,7 @@ function aktualisiereKopf() {
   const untertitel = document.getElementById('kopfzeileUntertitel');
   const b = aktuellerBenutzer();
   untertitel.textContent = b && appBereit ? `Angemeldet als ${anzeigeName(b)}` : 'Ausgabenverwaltung';
+  document.getElementById('navKasse').hidden = !(appBereit && hatKassenrolle());
 }
 
 // ---------------------------------------------
@@ -183,7 +190,7 @@ document.addEventListener('keydown', (e) => {
     return;
   }
   if (!appBereit || !e.altKey || e.ctrlKey || e.metaKey || istDetailOffen()) return;
-  const ziel = { 1: 'neu', 2: 'uebersicht', 3: 'export', 4: 'profil' }[e.key];
+  const ziel = { 1: 'neu', 2: 'uebersicht', 3: 'export', 4: 'profil', 5: hatKassenrolle() ? 'kasse' : null }[e.key];
   if (ziel) {
     e.preventDefault();
     navigiere(ziel);
