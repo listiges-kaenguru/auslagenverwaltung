@@ -185,6 +185,7 @@ bleibt reine SemVer). Eine Version 3.1.0 wurde nicht veröffentlicht.
 - [ ] Automatisierte Tests zumindest für die API-Routen
 - [ ] Ende-zu-Ende-Test auf echtem Webhosting (Apache mit `.htaccess`, nginx-Regeln aus der README)
 - [x] Weitere Benutzerrollen Kassenwart und Vorstand (v3.1.1)
-- [x] Kommentarfunktion für Einreichungen (v3.2.0, Konzept in `docs/konzept-kommentarfunktion.md`)
+- [x] Kommentarfunktion für Einreichungen (v3.2.0, Konzept im Tag v3.2.0:
+  [docs/konzept-kommentarfunktion.md](https://github.com/listiges-kaenguru/AuslagenVerwaltung/blob/v3.2.0/docs/konzept-kommentarfunktion.md))
 - [ ] E-Mail-Versand über SMTP (Zugangsdaten im Admin-Bereich, ohne Fremdbibliothek), z. B. um
   den Kassenwart auf neue Einreichungen und Mitglieder auf Rückfragen hinzuweisen
