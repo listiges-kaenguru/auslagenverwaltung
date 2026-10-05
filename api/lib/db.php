@@ -5,11 +5,11 @@
 // =============================================
 declare(strict_types=1);
 
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 6;
 
 /** Tabellen in Abhängigkeitsreihenfolge (für Kopieren beim DB-Wechsel) */
 const TABELLEN = ['va_benutzer', 'va_wiederherstellung', 'va_passkeys', 'va_einreichungen', 'va_auslagen', 'va_belege',
-    'va_einreichung_pdfs'];
+    'va_einreichung_pdfs', 'va_kommentare', 'va_kommentar_gelesen'];
 
 /** Tabellen mit großen Binärdaten (Spalte „daten“) → beim Kopieren zeilenweise, Schlüsselspalte */
 const BLOB_TABELLEN = ['va_belege' => 'auslage_id', 'va_einreichung_pdfs' => 'einreichung_id'];
@@ -211,6 +211,50 @@ function migriere(PDO $pdo): void
             erstellt_am DATETIME(3) NOT NULL,
             CONSTRAINT fk_epdf_einreichung FOREIGN KEY (einreichung_id) REFERENCES va_einreichungen(id) ON DELETE CASCADE
         ) {$opt}");
+    }
+
+    if ($version < 5) {
+        // Kommentare je Einreichung. Abgelehnte/zurückgezogene Einreichungen bleiben als abgeschlossener
+        // Datensatz (mit PDF, Kommentaren und Eckdaten) erhalten, ihre Auslagen sind wieder offen.
+        if (!spalteVorhanden($pdo, 'va_einreichungen', 'zustand')) {
+            $pdo->exec("ALTER TABLE va_einreichungen
+                ADD COLUMN zustand ENUM('aktiv','abgelehnt','zurueckgezogen') NOT NULL DEFAULT 'aktiv' AFTER art,
+                ADD COLUMN beendet_am DATETIME(3) NULL AFTER erstellt_am,
+                ADD COLUMN anzahl INT UNSIGNED NULL AFTER beendet_am,
+                ADD COLUMN summe DECIMAL(12,2) NULL AFTER anzahl");
+        }
+        $pdo->exec("CREATE TABLE IF NOT EXISTS va_kommentare (
+            id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT PRIMARY KEY,
+            einreichung_id CHAR(36) CHARACTER SET ascii NOT NULL,
+            auslage_id CHAR(36) CHARACTER SET ascii NULL,
+            auslage_text VARCHAR(150) NULL,
+            benutzer_id INT UNSIGNED NULL,
+            autor_name VARCHAR(201) NOT NULL,
+            autor_rolle ENUM('mitglied','kassenwart','vorstand') NOT NULL,
+            art ENUM('kommentar','status','ablehnung','zurueckgezogen') NOT NULL DEFAULT 'kommentar',
+            text VARCHAR(2000) NOT NULL,
+            erstellt_am DATETIME(3) NOT NULL,
+            KEY ix_einreichung (einreichung_id, id),
+            CONSTRAINT fk_komm_einreichung FOREIGN KEY (einreichung_id) REFERENCES va_einreichungen(id) ON DELETE CASCADE,
+            CONSTRAINT fk_komm_auslage FOREIGN KEY (auslage_id) REFERENCES va_auslagen(id) ON DELETE SET NULL,
+            CONSTRAINT fk_komm_benutzer FOREIGN KEY (benutzer_id) REFERENCES va_benutzer(id) ON DELETE SET NULL
+        ) {$opt}");
+        $pdo->exec("CREATE TABLE IF NOT EXISTS va_kommentar_gelesen (
+            benutzer_id INT UNSIGNED NOT NULL,
+            einreichung_id CHAR(36) CHARACTER SET ascii NOT NULL,
+            bis_id BIGINT UNSIGNED NOT NULL,
+            PRIMARY KEY (benutzer_id, einreichung_id),
+            CONSTRAINT fk_gel_benutzer FOREIGN KEY (benutzer_id) REFERENCES va_benutzer(id) ON DELETE CASCADE,
+            CONSTRAINT fk_gel_einreichung FOREIGN KEY (einreichung_id) REFERENCES va_einreichungen(id) ON DELETE CASCADE
+        ) {$opt}");
+    }
+
+    if ($version < 6) {
+        // Zeitpunkt „erstattet“ – danach läuft die Frist, bis die Einreichung abgeschlossen ist.
+        // Bereits erstattete Einreichungen behalten NULL und gelten damit sofort als abgeschlossen.
+        if (!spalteVorhanden($pdo, 'va_einreichungen', 'erstattet_am')) {
+            $pdo->exec("ALTER TABLE va_einreichungen ADD COLUMN erstattet_am DATETIME(3) NULL AFTER beendet_am");
+        }
     }
 
     $stmt = $pdo->prepare("INSERT INTO va_meta (schluessel, wert) VALUES ('schema_version', ?)

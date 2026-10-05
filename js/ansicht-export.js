@@ -1,18 +1,19 @@
 // =============================================
 // ANSICHT 3: EXPORT & DATENSICHERUNG
+// Die Datensicherung (Backup speichern/einspielen) ist standardmäßig ausgeblendet: Alle Daten liegen in
+// der Datenbank. Eingeschaltet wird sie nur zum Testen in api/config/config.php ('datensicherung' => true).
 // =============================================
 import {
   escapeHtml, statusInfo, formatiereDatum, formatiereBetrag, plural, summe, zeigeToast, mitLadezustand,
   registriereAktionen, meldeDatenAenderung
 } from './hilfen.js';
-import { ladeAuslagen, letztesBackup } from './speicher.js';
+import { letztesBackup } from './speicher.js';
 import {
   AUSWAHL_LISTE, auswahlLabel, auslagenFuerAuswahl, exportiereCSV, exportierePaket, exportierePdf,
   kannDateienTeilen, teileExport, erstelleBackup, spieleBackupEin
 } from './export.js';
 import { einreichenKnopfHtml } from './einreichen.js';
-
-const BACKUP_ERINNERUNG_TAGE = 30;
+import { datensicherungAktiv } from './sitzung.js';
 
 let auswahl = 'eingereicht';
 
@@ -104,11 +105,17 @@ export function rendereExport(container) {
 
       ${exportHtml}
 
+      ${datensicherungAktiv() ? backupHtml() : ''}
+    </div>
+  `;
+}
+
+/** Datensicherung & Import – nur sichtbar, wenn auf dem Server eingeschaltet (siehe datensicherungAktiv) */
+function backupHtml() {
+  return `
       <section class="abschnitt" aria-labelledby="titelBackup">
         <h3 class="abschnitt__titel" id="titelBackup">Datensicherung &amp; Import</h3>
-        <p class="abschnitt__text ${backupWarnung() ? 'abschnitt__text--warnung' : ''}">
-          ${backupText()}
-        </p>
+        <p class="abschnitt__text">${backupText()}</p>
         <div class="knopf-reihe">
           <button type="button" class="btn btn-sekundaer btn-klein" data-aktion="backup-erstellen">
             💾 Backup speichern
@@ -119,34 +126,15 @@ export function rendereExport(container) {
             ♻️ Backup einspielen
           </label>
         </div>
-      </section>
-    </div>
-  `;
+      </section>`;
 }
 
-function tageSeitBackup() {
-  const zeitpunkt = letztesBackup();
-  if (!zeitpunkt) return null;
-  return Math.floor((Date.now() - new Date(zeitpunkt).getTime()) / 86_400_000);
-}
-
-function backupWarnung() {
-  if (ladeAuslagen().length === 0) return false;
-  const tage = tageSeitBackup();
-  return tage === null || tage >= BACKUP_ERINNERUNG_TAGE;
-}
-
+/** Für alle gleich – keine Erinnerung mehr, die Daten liegen in der Datenbank */
 function backupText() {
   const basis = 'Deine Daten liegen auf dem Server des Vereins. Ein Backup enthält alle deine Auslagen und Belege als ZIP. '
     + 'Über „Backup einspielen“ lassen sich auch Backups der bisherigen Einzelplatz-App übernehmen.';
   const zeitpunkt = letztesBackup();
-  if (!zeitpunkt) {
-    return ladeAuslagen().length > 0 ? `⚠ Noch kein Backup erstellt. ${basis}` : basis;
-  }
-  const datum = formatiereDatum(zeitpunkt.slice(0, 10));
-  return backupWarnung()
-    ? `⚠ Letztes Backup: ${datum} – bitte aktualisieren. ${basis}`
-    : `Letztes Backup: ${datum}. ${basis}`;
+  return zeitpunkt ? `${basis} Letztes Backup auf diesem Gerät: ${formatiereDatum(zeitpunkt.slice(0, 10))}.` : basis;
 }
 
 /** Aktion mit Ladezustand und einheitlicher Fehlerbehandlung ausführen */
@@ -190,7 +178,7 @@ registriereAktionen({
     if (await teileExport(auswahl)) zeigeToast('📤 Geteilt');
   }),
 
-  'backup-erstellen': (btn) => mitFehlerbehandlung(btn, async () => {
+  'backup-erstellen': (btn) => datensicherungAktiv() && mitFehlerbehandlung(btn, async () => {
     zeigeToast('💾 Backup wird erstellt …', 10_000);
     const anzahl = await erstelleBackup();
     zeigeToast(`💾 Backup mit ${plural(anzahl, 'Auslage', 'Auslagen')} gespeichert`);
@@ -198,6 +186,7 @@ registriereAktionen({
   }),
 
   'backup-einspielen': async (input) => {
+    if (!datensicherungAktiv()) return;
     const datei = input.files?.[0];
     input.value = '';
     if (!datei) return;

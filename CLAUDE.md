@@ -23,6 +23,8 @@ Admin-Bereich. Zielgruppe: kleine Vereine auf normalem Shared-Webhosting (FTP-Up
   - `hilfen.js` – reine Hilfsfunktionen, `registriereAktionen`, `zeigeToast`, `meldeDatenAenderung`
   - `detail.js` (Bottom-Sheet), `einreichen.js`/`export.js`/`pdf.js` (PDF/ZIP), `webauthn.js`
   - `ansicht-kasse.js` – Ansicht `#kasse` für Kassenwart/Vorstand, lädt direkt über `kasse/…`
+  - `kommentare.js` – Verlauf je Einreichung (lädt beim Aufklappen, meldet „gelesen“),
+    `klappen.js` – `<details>` mit `data-klapp="schlüssel"` + `offenAttr()`, Zustand je Sitzung
 - **Backend** (`api/`): einziger Einstieg `api/index.php`, Aufruf `api/?r=<route>`.
   Routen werden mit `route('METHODE', 'pfad', fn)` in `api/routen/*.php` registriert.
   Antwort immer über `antworte([...])` → `{ok:true,…}`; fachliche Fehler als
@@ -48,7 +50,7 @@ Admin-Bereich. Zielgruppe: kleine Vereine auf normalem Shared-Webhosting (FTP-Up
 - **HTML-Ausgabe:** Nutzerdaten in Templates immer durch `escapeHtml()`.
 - **Kommunikation zwischen Modulen** über DOM-Events (`daten-geaendert`, `benutzer-geaendert`,
   `angemeldet`, `abgemeldet`, `nicht-angemeldet`, `ansicht-rendern`, `design-geaendert`,
-  `version-geaendert`).
+  `version-geaendert`, `kommentare-geaendert`, `hinweise-aktualisieren`).
 - **PHP:** `declare(strict_types=1);`, nur Prepared Statements über `abfrage()`, jede Route prüft
   zuerst `erfordereLogin()`, `erfordereAdmin()` bzw. `erfordereKassenrolle()`. Auslagen-Zugriffe
   immer mit `benutzer_id = ?` einschränken – Admins sehen **keine** fremden Auslagen.
@@ -60,8 +62,16 @@ Admin-Bereich. Zielgruppe: kleine Vereine auf normalem Shared-Webhosting (FTP-Up
 - **Einreichungen sind feste Gruppen** (`va_einreichungen`): jede nicht offene Auslage gehört zu
   genau einer, alle Auslagen einer Gruppe haben denselben Status. Statuswechsel nur für die ganze
   Gruppe (`routen/einreichungen.php`, `routen/kasse.php`); einzeln sind eingereichte Auslagen nicht
-  änderbar/löschbar (`pruefeEinzelnAenderbar()`). Zurückziehen/Ablehnen löst die Gruppe auf.
-  Jede neue Einreichung hat genau ein gespeichertes PDF (fällt beim Auflösen per CASCADE weg).
+  änderbar/löschbar (`pruefeEinzelnAenderbar()`). Zurückziehen/Ablehnen löst die Gruppe auf
+  (`schliesseEinreichung()`): Auslagen wieder offen, der Datensatz bleibt mit `zustand`
+  abgelehnt/zurueckgezogen, PDF und Kommentaren erhalten. Gelöscht wird eine Einreichung nur beim
+  Verwerfen direkt nach dem Einreichen. Jede neue Einreichung hat genau ein gespeichertes PDF.
+  „erstattet“ ist nur innerhalb von `ABSCHLUSS_FRIST_S` (5 Min., `erstattet_am`) zurücknehmbar,
+  danach gilt die Einreichung als abgeschlossen; ohne `erstattet_am` (Altbestand) sofort.
+- **Kommentare** (`routen/kommentare.php`): Zugriff wie Einreichungs-PDF (`ladeEinreichungMitZugriff()`:
+  Besitzer oder Kassenrolle), schreiben nur bei `zustand = 'aktiv'`, nie bearbeitbar; Autorname und
+  Rolle werden mitgespeichert. **Jede Statusänderung einer Einreichung** mit `protokolliereStatus()`
+  in den Verlauf schreiben (neue Statusaktionen nicht vergessen).
 - **Status:** offen → eingereicht → veranlasst → erstattet. „veranlasst“ setzt nur der Kassenwart,
   „erstattet“ nur der Einreicher. Ist `veranlasst_am` gesetzt, kann die Gruppe nicht mehr aufgelöst
   werden; Konten mit solchen Auslagen sind nur sperrbar.
@@ -81,7 +91,8 @@ Admin-Bereich. Zielgruppe: kleine Vereine auf normalem Shared-Webhosting (FTP-Up
 3. **Neue API-Route?** → in passender `api/routen/*.php` registrieren; Frontend ruft über
    `apiGet/apiPost/apiPut/apiDelete` und `mitId()` auf.
 4. **Backup-Format berührt?** → Kompatibilität mit Backups der früheren Einzelplatz-Version erhalten
-   (`BACKUP_FORMAT` in `export.js`).
+   (`BACKUP_FORMAT` in `export.js`). Die Datensicherung ist im Betrieb ausgeblendet; zum Testen in der
+   lokalen `api/config/config.php` `'datensicherung' => true` setzen (nie im Repository).
 5. **`CHANGELOG.md` aktualisieren** (Änderungsprotokoll + offene Punkte). Bei nutzersichtbaren
    Änderungen auch **`BENUTZERHANDBUCH.md`** (Bedienung, Knopf-Beschriftungen exakt wie in der UI)
    und bei Betrieb/Installation die README anpassen.

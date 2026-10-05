@@ -15,6 +15,7 @@ import {
 } from './speicher.js';
 import { bereiteBelegVor, istPdf } from './bild.js';
 import { belegKnoepfeHtml, haendlerDatalistHtml, pruefeEingaben, markiereFehler } from './beleg-ui.js';
+import { ladeVerlauf, kommentareZurAuslageHtml } from './kommentare.js';
 
 let modal, blatt, inhalt;
 let aktuelleId        = null;
@@ -141,6 +142,9 @@ async function rendereInhalt() {
     return;
   }
 
+  // Rückfragen zu diesem Posten (Verlauf der Einreichung, meist schon geladen)
+  if (auslage.einreichungId) await ladeVerlauf(auslage.einreichungId);
+
   let beleg = null;
   if (auslage.hatFoto) {
     beleg = await holeBeleg(auslage.id).catch((err) => {
@@ -197,6 +201,8 @@ function anzeigeHtml(auslage, beleg) {
       <div class="status-anzeige"><span class="badge badge--${info.key}">${info.icon} ${info.label}</span></div>
       ${statusHinweis}
     </div>
+
+    ${auslage.einreichungId ? kommentareZurAuslageHtml(auslage.einreichungId, auslage.id) : ''}
 
     <div class="modal-abschnitt">
       <div class="abschnitt-label">Kassenbon / Rechnung</div>

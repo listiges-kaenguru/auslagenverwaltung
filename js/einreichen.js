@@ -3,7 +3,7 @@
 // Offene Auslagen auswählen → PDF (Übersicht + Belege) erstellen → Einreichung anlegen
 // (Status „Eingereicht“) → PDF zur Einreichung speichern → PDF anbieten.
 // Bei „Abbrechen“ oder wenn das PDF nicht gespeichert werden kann, wird die Einreichung
-// zurückgezogen – jede neue Einreichung hat damit genau ein gespeichertes PDF.
+// spurlos verworfen (nicht „zurückgezogen“) – jede Einreichung hat damit genau ein gespeichertes PDF.
 // Die Einreichung ist ein eigener Datensatz, damit Kassenwart/Vorstand sie gebündelt sehen.
 // Der Status wird bewusst VOR dem Anbieten gespeichert: „PDF öffnen“ kann die App-Seite
 // verlassen (Firefox-App), und eine erst dann gestartete Anfrage ist nicht verlässlich.
@@ -12,7 +12,7 @@ import {
   escapeHtml, formatiereBetrag, formatiereDatum, plural, summe, zeigeToast, mitLadezustand,
   registriereAktionen, meldeDatenAenderung, ladeDateiHerunter, formatiereGroesse
 } from './hilfen.js';
-import { reicheEin, zieheEinreichungZurueck, speichereEinreichungsPdf } from './speicher.js';
+import { reicheEin, verwerfeEinreichung, speichereEinreichungsPdf } from './speicher.js';
 import { maxPdfBytes } from './sitzung.js';
 import { auslagenFuerAuswahl, erstelleEinreichung } from './export.js';
 import { hatStammdaten } from './stammdaten.js';
@@ -144,14 +144,14 @@ registriereAktionen({
         try {
           await speichereEinreichungsPdf(einreichungId, blob);
         } catch (err) {
-          await zieheEinreichungZurueck(einreichungId).catch(() => {});
+          await verwerfeEinreichung(einreichungId).catch(() => {});
           meldeDatenAenderung();
           throw new Error(`PDF konnte nicht gespeichert werden – die Auslagen bleiben offen. ${err.message}`);
         }
         meldeDatenAenderung();
 
         if (!await ladeDateiHerunter(blob, dateiname)) {
-          await zieheEinreichungZurueck(einreichungId);
+          await verwerfeEinreichung(einreichungId);
           meldeDatenAenderung();
           zeigeToast('Abgebrochen – die Auslagen bleiben offen', 4000);
           return;

@@ -67,6 +67,7 @@
   --schrift:         'Atkinson Hyperlegible Next', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 
   --nav-hoehe: 64px;
+  --inhalt-breite: 600px; /* wächst auf breiten Fenstern mit, siehe unten */
   --sicher-unten: env(safe-area-inset-bottom, 0px);
   --sicher-oben:  env(safe-area-inset-top, 0px);
 
@@ -195,7 +196,7 @@ h1, h2, h3, h4 { line-height: 1.25; }
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  max-width: 600px;
+  max-width: calc(var(--inhalt-breite) - 32px); /* bündig mit dem Inhalt (.ansicht hat 16px Innenabstand) */
   margin: 0 auto;
 }
 .app-titel {
@@ -222,6 +223,13 @@ h1, h2, h3, h4 { line-height: 1.25; }
   transition: background 0.15s ease;
 }
 .kopf-btn:active { background: var(--kopf-knopf-aktiv); }
+/* Aktualisieren: mit Text, auf schmalen Fenstern nur das Symbol */
+.kopf-btn--text { width: auto; padding: 0 14px; gap: 6px; font-weight: 600; font-size: 0.875rem; }
+.kopf-btn__icon { width: 20px; height: 20px; flex-shrink: 0; }
+@media (max-width: 599px) {
+  .kopf-btn--text { width: 44px; padding: 0; }
+  .kopf-btn__text { display: none; }
+}
 .kopf-btn:focus-visible { outline-color: var(--kopf-text); }
 
 /* Farbschema-Symbol passend zur Wahl */
@@ -278,7 +286,7 @@ h1, h2, h3, h4 { line-height: 1.25; }
 
 .ansicht {
   padding: 16px;
-  max-width: 600px;
+  max-width: var(--inhalt-breite);
   margin: 0 auto;
   animation: einblenden 0.2s ease both;
 }
@@ -307,7 +315,13 @@ h1, h2, h3, h4 { line-height: 1.25; }
   display: flex;
   flex-direction: column;
   gap: 18px;
+  max-width: 640px; /* Eingabefelder nicht über die ganze Breite ziehen */
 }
+.ansicht--schmal { max-width: 600px; }
+
+/* Laptop/Desktop: Inhalt breiter, damit Listen (Übersicht, Kasse) nicht unnötig schmal sind */
+@media (min-width: 800px)  { :root { --inhalt-breite: 760px; } }
+@media (min-width: 1100px) { :root { --inhalt-breite: 960px; } }
 .formular-feld {
   width: 100%;
   border: 1.5px solid var(--rand-feld);
@@ -554,13 +568,10 @@ textarea.formular-feld { resize: vertical; min-height: 76px; line-height: 1.45; 
    ============================================= */
 .filter-leiste {
   display: flex;
+  flex-wrap: wrap; /* lieber zweite Zeile als seitlich wischen – alle Filter bleiben sichtbar */
   gap: 8px;
-  overflow-x: auto;
-  padding: 14px 16px;
-  margin: 0 -16px;
-  scrollbar-width: none;
+  padding: 14px 0;
 }
-.filter-leiste::-webkit-scrollbar { display: none; }
 .filter-leiste--oben { padding-top: 4px; margin-bottom: 8px; }
 
 .filter-chip {
@@ -959,7 +970,6 @@ textarea.formular-feld { resize: vertical; min-height: 76px; line-height: 1.45; 
   color: var(--text-2);
   margin-bottom: 14px;
 }
-.abschnitt__text--warnung { color: var(--amber-text); }
 
 /* =============================================
    TOAST
@@ -1277,10 +1287,10 @@ body.ohne-anmeldung .haupt-inhalt { padding-bottom: calc(24px + var(--sicher-unt
 
 .sperr-hinweis { margin-top: 10px; }
 
-.kasse-kopf { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.kasse-kopf .seiten-titel { margin-bottom: 0; }
-.kasse-kopf__knopf { width: auto; }
-.kasse-kopf + .abschnitt__text { margin: 8px 0 14px; }
+.ansicht-kopf { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.ansicht-kopf .seiten-titel { margin-bottom: 0; }
+.ansicht-kopf + .abschnitt__text { margin: 8px 0 14px; }
+.ansicht-kopf + .zusammenfassung-karte { margin-top: 12px; }
 
 .kasse-liste { display: flex; flex-direction: column; gap: 14px; }
 .kasse-gruppe {
@@ -1354,3 +1364,100 @@ body.ohne-anmeldung .haupt-inhalt { padding-bottom: calc(24px + var(--sicher-unt
 .auslagen-karte--in-gruppe { box-shadow: none; }
 .status-anzeige { margin-top: 8px; }
 .kasse-gruppe__rechts { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+
+/* =============================================
+   EINKLAPPBARE EINREICHUNGEN & KOMMENTARE (v3.2)
+   ============================================= */
+details.einreichung-karte, details.kasse-gruppe { display: block; }
+.einreichung-karte > summary, .kasse-gruppe > summary, .verlauf > summary, .bereich > summary {
+  list-style: none;
+  cursor: pointer;
+  position: relative;
+  padding-right: 26px;
+}
+.einreichung-karte > summary::-webkit-details-marker, .kasse-gruppe > summary::-webkit-details-marker,
+.verlauf > summary::-webkit-details-marker, .bereich > summary::-webkit-details-marker { display: none; }
+/* Pfeil rechts: ▸ eingeklappt, ▾ aufgeklappt */
+.einreichung-karte > summary::after, .kasse-gruppe > summary::after, .verlauf > summary::after, .bereich > summary::after {
+  content: '▸';
+  position: absolute;
+  right: 4px;
+  top: 2px;
+  color: var(--text-2);
+  font-size: 1rem;
+}
+.einreichung-karte[open] > summary::after, .kasse-gruppe[open] > summary::after,
+.verlauf[open] > summary::after, .bereich[open] > summary::after { content: '▾'; }
+summary:focus-visible { outline: 3px solid var(--fokus); outline-offset: 2px; border-radius: 8px; }
+
+.einreichung-karte__marken { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; flex-shrink: 0; }
+.einreichung-karte__inhalt { display: flex; flex-direction: column; gap: 10px; margin-top: 12px; }
+.einreichung-karte--abgebrochen { border-left-color: var(--rand-feld); opacity: 0.95; }
+.kasse-gruppe > summary { display: flex; }
+
+.bereich { margin-top: 18px; }
+.bereich__kopf { display: inline-block; margin: 0 0 10px; }
+.bereich .einreichungs-liste { margin-top: 4px; }
+
+.neu-marke {
+  display: inline-block;
+  background: var(--rot);
+  color: #ffffff;
+  border-radius: 99px;
+  padding: 1px 8px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.kommentar-anzahl { font-size: 0.8125rem; color: var(--text-2); white-space: nowrap; }
+
+/* Verlauf */
+.verlauf { background: var(--flaeche); border: 1px solid var(--rand); border-radius: 12px; padding: 10px 12px; }
+.verlauf__kopf { font-weight: 700; font-size: 0.9375rem; }
+.verlauf__inhalt { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+.kommentar-liste { list-style: none; display: flex; flex-direction: column; gap: 8px; }
+.kommentar {
+  background: var(--flaeche-2);
+  border-radius: 10px;
+  padding: 8px 10px;
+  margin-right: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.kommentar--eigen { margin-right: 0; margin-left: 24px; background: var(--gruen-hell); }
+.kommentar--vermerk { background: var(--rot-hell); }
+.kommentar__kopf { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; font-size: 0.8125rem; color: var(--text-2); }
+.kommentar__autor { font-weight: 700; color: var(--text); }
+.kommentar__vermerk { font-size: 0.8125rem; font-weight: 700; color: var(--rot-text); }
+.kommentar__bezug { font-size: 0.8125rem; color: var(--blau-text); font-weight: 600; }
+.kommentar__text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.kommentar__loeschen { align-self: flex-end; min-height: 28px; padding: 0; color: var(--rot-text); }
+.kommentar-formular { display: flex; flex-direction: column; gap: 8px; }
+.kommentar-formular__zeile { display: flex; gap: 8px; align-items: center; }
+.kommentar-formular__zeile select { flex: 1; min-width: 0; }
+.kommentar-formular__zeile .btn { width: auto; margin-left: auto; }
+.kasse-ablehnen { display: flex; flex-direction: column; gap: 8px; }
+
+/* Hinweis-Punkt an der Navigation (ungelesene Kommentare) */
+.nav-btn { position: relative; }
+.nav-btn--hinweis::after {
+  content: '';
+  position: absolute;
+  top: 7px;
+  left: calc(50% + 8px);
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--rot);
+  border: 2px solid var(--flaeche);
+}
+.kommentar--status {
+  background: none;
+  border-left: 3px solid var(--rand-feld);
+  border-radius: 0;
+  margin: 0;
+  padding: 2px 0 2px 10px;
+  font-size: 0.875rem;
+}
+.kommentar--status .kommentar__text { font-weight: 600; }

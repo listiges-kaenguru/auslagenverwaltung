@@ -4,7 +4,7 @@
 // Daten kommen immer live vom Server: Anfragen an api/ werden nie gecacht.
 // Ein Update entsteht durch Erhöhen von VERSION; die App zeigt dann einen „Aktualisieren“-Hinweis.
 // =============================================
-const VERSION = '3.1.1';
+const VERSION = '3.2.0';
 const CACHE   = `vereinsauslagen-mu-${VERSION}`;
 
 const APP_SHELL = [
@@ -28,6 +28,8 @@ const APP_SHELL = [
   './js/ansicht-uebersicht.js',
   './js/ansicht-export.js',
   './js/ansicht-kasse.js',
+  './js/klappen.js',
+  './js/kommentare.js',
   './js/export.js',
   './js/pdf.js',
   './js/einreichen.js',
