@@ -1,6 +1,6 @@
 // =============================================
 // ANSICHT 4: PROFIL
-// Stammdaten · Passwort · Zwei-Faktor (TOTP) · Passkeys · Abmelden
+// Stammdaten · Passwort · Zwei-Faktor (TOTP) · Passkeys · Abmelden · App-Version
 // Für Admins zusätzlich „Administration“: Benutzerverwaltung und Datenbank-Verbindung
 // =============================================
 import {
@@ -11,6 +11,7 @@ import { apiGet, apiPost, apiPut, apiDelete, mitId } from './api.js';
 import { aktuellerBenutzer, setzeBenutzer, istAdmin, anzeigeName, passkeysMoeglich, meldeAb, ladeStatus } from './sitzung.js';
 import { stammdatenFormularHtml } from './stammdaten.js';
 import { erstellePasskey, geraeteName } from './webauthn.js';
+import { versionsInfo } from './pwa.js';
 
 const MIN_PASSWORT = 10;
 
@@ -73,6 +74,10 @@ export function rendereProfil(container) {
       </section>
 
       ${istAdmin() ? adminHtml(b) : ''}
+
+      <section class="abschnitt" id="versionsBereich" aria-labelledby="titelVersion">
+        ${versionHtml()}
+      </section>
     </div>`;
 
   if (istAdmin() && adminBenutzer === null && !adminLaedt) ladeAdminDaten();
@@ -198,6 +203,29 @@ function passkeysHtml(b) {
     ${liste}
     ${hinzufuegen}`;
 }
+
+// ---------------------------------------------
+// App-Version
+// ---------------------------------------------
+function versionHtml() {
+  const { laufend, neu, ermittelt, updateBereit } = versionsInfo();
+  return `
+    <h3 class="abschnitt__titel" id="titelVersion">App-Version</h3>
+    <p class="abschnitt__text">Laufende Version: <strong>${escapeHtml(laufend || (ermittelt ? 'unbekannt' : 'wird ermittelt …'))}</strong></p>
+    ${updateBereit ? `
+      <div class="codes-kasten" role="status">
+        <p class="codes-kasten__titel">Aktualisierung verfügbar</p>
+        <p class="abschnitt__text">Neue Version: <strong>${escapeHtml(neu || 'wird ermittelt …')}</strong> – deine Daten bleiben erhalten.</p>
+        <button type="button" class="btn btn-primaer btn-klein" data-aktion="update-installieren">🔄 Jetzt aktualisieren</button>
+      </div>`
+      : ermittelt ? '<p class="klein-hinweis klein-hinweis--links">Die App ist auf dem neuesten Stand.</p>' : ''}`;
+}
+
+// Nur den Versionsbereich auffrischen – ein komplettes Neu-Rendern würde Formulareingaben verwerfen
+document.addEventListener('version-geaendert', () => {
+  const bereich = document.getElementById('versionsBereich');
+  if (bereich) bereich.innerHTML = versionHtml();
+});
 
 // ---------------------------------------------
 // Administration

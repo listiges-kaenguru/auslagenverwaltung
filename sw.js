@@ -4,7 +4,7 @@
 // Daten kommen immer live vom Server: Anfragen an api/ werden nie gecacht.
 // Ein Update entsteht durch Erhöhen von VERSION; die App zeigt dann einen „Aktualisieren“-Hinweis.
 // =============================================
-const VERSION = '3.0.5';
+const VERSION = '3.0.6';
 const CACHE   = `vereinsauslagen-mu-${VERSION}`;
 
 const APP_SHELL = [
@@ -70,9 +70,10 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Vom Nutzer bestätigtes Update sofort aktivieren
+// Vom Nutzer bestätigtes Update sofort aktivieren; Versionsabfrage fürs Profil
 self.addEventListener('message', (event) => {
   if (event.data?.typ === 'SKIP_WAITING') self.skipWaiting();
+  if (event.data?.typ === 'VERSION') event.ports[0]?.postMessage({ version: VERSION });
 });
 
 self.addEventListener('fetch', (event) => {
