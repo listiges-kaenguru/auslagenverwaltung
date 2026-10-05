@@ -1,14 +1,20 @@
 // =============================================
 // PWA: Service Worker, Updates, Installation
+// Die Versionsnummer steht nur in sw.js (VERSION); laufende und wartende Version werden
+// per MessageChannel beim jeweiligen Worker erfragt und über „version-geaendert“ gemeldet.
 // =============================================
 import { zeigeToast, registriereAktionen } from './hilfen.js';
 
 const LS_INSTALL_AUSGEBLENDET = 'va_install_ausgeblendet';
 const INSTALL_PAUSE_TAGE = 14;
+const CACHE_PRAEFIX = 'vereinsauslagen-mu-';
 
 let installAufforderung = null;
 let wartenderWorker     = null;
 let updateAngefordert   = false;
+let versionLaufend      = null;   // Version der App, die gerade läuft
+let versionNeu          = null;   // Version des wartenden Updates
+let versionErmittelt    = false;
 
 const istStandalone = () =>
   window.matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
@@ -36,7 +42,7 @@ async function registriereServiceWorker() {
     const registrierung = await navigator.serviceWorker.register('./sw.js');
 
     if (registrierung.waiting && navigator.serviceWorker.controller) {
-      zeigeUpdateHinweis(registrierung.waiting);
+      await zeigeUpdateHinweis(registrierung.waiting);
     }
     registrierung.addEventListener('updatefound', () => {
       const neuerWorker = registrierung.installing;
@@ -56,9 +62,68 @@ async function registriereServiceWorker() {
   }
 }
 
-function zeigeUpdateHinweis(worker) {
+async function zeigeUpdateHinweis(worker) {
   wartenderWorker = worker;
   document.getElementById('updateBanner').hidden = false;
+  meldeVersion();
+  versionNeu = await frageVersion(worker);
+  meldeVersion();
+}
+
+// ---------------------------------------------
+// Versionsanzeige (Profil)
+// ---------------------------------------------
+function meldeVersion() {
+  document.dispatchEvent(new CustomEvent('version-geaendert'));
+}
+
+function frageVersion(worker) {
+  return new Promise((resolve) => {
+    const kanal = new MessageChannel();
+    // Worker vor 3.0.6 kennen die Abfrage nicht und antworten nie
+    const zeitlimit = setTimeout(() => resolve(null), 2000);
+    kanal.port1.onmessage = (e) => {
+      clearTimeout(zeitlimit);
+      resolve(typeof e.data?.version === 'string' ? e.data.version : null);
+    };
+    worker.postMessage({ typ: 'VERSION' }, [kanal.port2]);
+  });
+}
+
+// Rückfall für ältere Worker: Cache-Name enthält die Version (der des Updates zählt nicht)
+async function versionAusCache() {
+  try {
+    const versionen = (await caches.keys())
+      .filter((k) => k.startsWith(CACHE_PRAEFIX))
+      .map((k) => k.slice(CACHE_PRAEFIX.length))
+      .filter((v) => v !== versionNeu);
+    return versionen.length === 1 ? versionen[0] : null;
+  } catch {
+    return null;
+  }
+}
+
+// Ohne Service Worker kommt alles direkt vom Server – dessen sw.js nennt also die laufende Version
+async function versionAusSkript() {
+  try {
+    const antwort = await fetch('./sw.js', { cache: 'no-store' });
+    return (await antwort.text()).match(/const VERSION\s*=\s*'([^']+)'/)?.[1] ?? null;
+  } catch {
+    return null;
+  }
+}
+
+async function ermittleLaufendeVersion() {
+  const controller = navigator.serviceWorker?.controller;
+  versionLaufend = controller
+    ? (await frageVersion(controller)) ?? (await versionAusCache())
+    : await versionAusSkript();
+  versionErmittelt = true;
+  meldeVersion();
+}
+
+export function versionsInfo() {
+  return { laufend: versionLaufend, neu: versionNeu, ermittelt: versionErmittelt, updateBereit: !!wartenderWorker };
 }
 
 // ---------------------------------------------
@@ -128,5 +193,5 @@ registriereAktionen({
 
 export function initPWA() {
   richteInstallationEin();
-  registriereServiceWorker();
+  registriereServiceWorker().finally(ermittleLaufendeVersion);
 }

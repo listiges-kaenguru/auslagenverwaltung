@@ -56,7 +56,8 @@ Auch als installierte App braucht VereinsAuslagen eine **Internetverbindung**, w
 dem Server liegen.
 
 **Neue Version verfügbar:** Erscheint dieser Hinweis, tippe auf **Aktualisieren**. Deine Daten
-bleiben dabei erhalten.
+bleiben dabei erhalten. Welche Version du gerade nutzt, siehst du ganz unten im Profil
+(siehe [App-Version](#app-version)).
 
 ## 3. Die App im Überblick
 
@@ -234,6 +235,13 @@ Passkeys funktionieren nur, wenn die App über eine sichere Verbindung (`https:/
 ### Abmelden
 
 Oben im Profil auf **↩ Abmelden** tippen. Tu das vor allem an Computern, die auch andere nutzen.
+
+### App-Version
+
+Ganz unten im Profil steht unter **App-Version**, welche Version der App gerade läuft. Gibt es
+eine neuere Version, erscheint dort der Hinweis **Aktualisierung verfügbar** mit der neuen
+Versionsnummer. Tippe auf **🔄 Jetzt aktualisieren**, die App lädt dann neu. Deine Daten bleiben
+dabei erhalten.
 
 ## 10. Häufige Fragen und Probleme
 

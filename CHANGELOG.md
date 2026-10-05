@@ -4,7 +4,7 @@
 
 | | |
 |---|---|
-| App-Version (`sw.js` → `VERSION`) | **3.0.5** |
+| App-Version (`sw.js` → `VERSION`) | **3.0.6** |
 | Schema-Version (`api/lib/db.php` → `SCHEMA_VERSION`) | **1** |
 | Tests | keine automatisierten Tests |
 
@@ -17,7 +17,8 @@ Der Funktionsumfang ist vollständig umgesetzt (siehe unten). Es gibt keine beka
 - Übersicht mit Status offen / eingereicht / erstattet, Detail-Bottom-Sheet zum Bearbeiten
 - Einreichen: offene Auslagen einzeln auswählen → PDF (Übersicht + Stammdaten + Belege)
 - Export (CSV/PDF/ZIP), Datensicherung als ZIP, Import von Backups der früheren Einzelplatz-Version
-- PWA: installierbar, App-Shell offline, Update-Hinweis; Hell/Dunkel/System-Farbschema
+- PWA: installierbar, App-Shell offline, Update-Hinweis, Versionsanzeige im Profil;
+  Hell/Dunkel/System-Farbschema
 
 **Mehrbenutzer / Server**
 - Ersteinrichtung im Browser (DB-Zugang + erster Admin → `api/config/config.php`)
@@ -46,6 +47,15 @@ Der Funktionsumfang ist vollständig umgesetzt (siehe unten). Es gibt keine beka
 ## Versionen
 
 Neueste zuerst.
+
+### 3.0.6
+
+- Profil: neuer Bereich „App-Version“ ganz unten zeigt die laufende Version; liegt ein Update
+  bereit, zusätzlich „Aktualisierung verfügbar“ mit neuer Versionsnummer und Knopf
+  „🔄 Jetzt aktualisieren“
+- Service Worker beantwortet die Nachricht `{ typ: 'VERSION' }` über einen MessageChannel;
+  `pwa.js` meldet Änderungen per Event `version-geaendert`. Für Worker vor 3.0.6 wird die
+  laufende Version aus dem Cache-Namen abgeleitet, ohne Service Worker aus `sw.js`
 
 ### 3.0.5
 

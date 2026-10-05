@@ -44,7 +44,8 @@ Admin-Bereich. Zielgruppe: kleine Vereine auf normalem Shared-Webhosting (FTP-Up
   Formulare über `data-formular="x"` → Handler `formular:x`, Dateiauswahl über `data-datei-aktion`.
 - **HTML-Ausgabe:** Nutzerdaten in Templates immer durch `escapeHtml()`.
 - **Kommunikation zwischen Modulen** über DOM-Events (`daten-geaendert`, `benutzer-geaendert`,
-  `angemeldet`, `abgemeldet`, `nicht-angemeldet`, `ansicht-rendern`, `design-geaendert`).
+  `angemeldet`, `abgemeldet`, `nicht-angemeldet`, `ansicht-rendern`, `design-geaendert`,
+  `version-geaendert`).
 - **PHP:** `declare(strict_types=1);`, nur Prepared Statements über `abfrage()`, jede Route prüft
   zuerst `erfordereLogin()` bzw. `erfordereAdmin()`. Auslagen-Zugriffe immer mit
   `benutzer_id = ?` einschränken – Admins sehen **keine** fremden Auslagen.
