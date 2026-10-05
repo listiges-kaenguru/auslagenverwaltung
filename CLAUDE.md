@@ -68,7 +68,7 @@ Admin-Bereich. Zielgruppe: kleine Vereine auf normalem Shared-Webhosting (FTP-Up
 5. **`CHANGELOG.md` aktualisieren** (Änderungsprotokoll + offene Punkte). Bei nutzersichtbaren
    Änderungen auch **`BENUTZERHANDBUCH.md`** (Bedienung, Knopf-Beschriftungen exakt wie in der UI)
    und bei Betrieb/Installation die README anpassen.
-6. **Wiki nachziehen** (`../AuslagenVerwaltung.wiki`, eigenes Git-Repo): Die Seiten spiegeln README,
+6. **Wiki nachziehen** (`../auslagenverwaltung.wiki`, eigenes Git-Repo): Die Seiten spiegeln README,
    Benutzerhandbuch und CHANGELOG (API-Routen, Schema, Roadmap) – geänderte Abschnitte dort
    ebenfalls anpassen und im Wiki-Repo committen.
 
@@ -78,7 +78,7 @@ Admin-Bereich. Zielgruppe: kleine Vereine auf normalem Shared-Webhosting (FTP-Up
 - `BENUTZERHANDBUCH.md` – Bedienung für Vereinsmitglieder und Admins, du-Form, ohne Technikjargon
 - `CHANGELOG.md` – aktueller Stand und Änderungsprotokoll
 - `CLAUDE.md` – diese Datei
-- GitHub-Wiki – lokal in `../AuslagenVerwaltung.wiki` (Remote `AuslagenVerwaltung.wiki.git`,
+- GitHub-Wiki – lokal in `../auslagenverwaltung.wiki` (Remote `AuslagenVerwaltung.wiki.git`,
   Branch `master`); Inhalte aus README, Benutzerhandbuch und CHANGELOG, nach Themen aufgeteilt
 
 ## Testen / Ausführen
